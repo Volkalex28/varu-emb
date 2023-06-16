@@ -1,0 +1,18 @@
+[package]
+name = "varuemb-utils"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bytemuck = "1.13.1"
+const_format = "0.2.30"
+embassy-futures = "0.1.0"
+linked-hash-map = "0.5.6"
+syn = "2.0.15"
+paste = "1.0.12"
+proc-macro2 = "1.0.56"
+quote = "1.0.26"
+varuemb-utils-proc = { path = "proc" }

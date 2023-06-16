@@ -1,0 +1,29 @@
+[package]
+name = "varuemb"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.68"
+authors = ["Volkalex28 <anan20000228@gmail.com>"]
+description = """Toolchain for easy creation of asynchronous embedded applications on rust-lang"""
+license = "MIT"
+homepage = "https://github.com/Volkalex28/varu-emb#readme"
+repository = "https://github.com/Volkalex28/varu-emb"
+readme = "README.md"
+categiries = ["asynchronous", "data-structures", "embedded"]
+keywords = ["channels", "embassy", "async", "notification", "rpc"]
+include = [
+    "/src",
+    "/utils",
+    "/notifier",
+    "/README.md",
+    "/LICENSE",
+]
+
+[dependencies.varuemb-utils]
+path = "utils/"
+
+[dependencies.varuemb-notifier]
+path = "notifier/"
+
+[workspace]
+members = ["utils", "notifier"]

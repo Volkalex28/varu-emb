@@ -1,0 +1,30 @@
+[package]
+name = "varuemb-notifier"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.68"
+authors = ["Volkalex28 <anan20000228@gmail.com>"]
+description = """
+    varuemb-notifier allows to create and configure synchronous and asynchronous pub-sub interface 
+    and asynchronous rpc interface for services in embedded applications
+"""
+license = "MIT"
+readme = "README.md"
+categiries = ["asynchronous", "data-structures", "embedded"]
+keywords = ["channels", "embassy", "async", "notification", "rpc"]
+include = [
+    "/src",
+    "/proc",
+    "/README.md",
+]
+
+
+[dependencies]
+anyhow = "1.0.71"
+embassy-sync = { version = "0.2.0" }
+embassy-time = { version = "0.1.1"}
+futures-util = "0.3.28"
+heapless = "0.7.16"
+log = "0.4.17"
+varuemb-notifier-proc = { path = "proc" }
+varuemb-utils = { path = "../utils" }
