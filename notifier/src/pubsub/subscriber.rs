@@ -105,9 +105,7 @@ where
     N: crate::traits::Notifier,
 {
     pub(crate) fn new(channel: &'static dyn DynSubscription<event::Event<N, E>>) -> Self {
-        channel
-            .state()
-            .lock().unwrap().receivers += 1;
+        channel.state().lock().unwrap().receivers += 1;
         Self {
             channel,
             state: true,
@@ -141,11 +139,26 @@ where
     }
 
     pub fn set_state(&mut self, state: bool) {
+        if state != self.state {
+            if state {
+                self.channel.state().lock().unwrap().receivers += 1;
+            } else {
+                self.__drop()
+            }
+        }
         self.state = state;
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.channel.clear()
+    }
+
+    fn __drop(&mut self) {
+        let mut state = self.channel.state().lock().unwrap();
+        state.receivers -= 1;
+        if state.receivers == 0 {
+            self.clear()
+        }
     }
 }
 
@@ -165,11 +178,7 @@ where
     N: crate::traits::Notifier,
 {
     fn drop(&mut self) {
-        let mut state = self.channel.state().lock().unwrap();
-        state.receivers -= 1;
-        if state.receivers == 0 {
-            self.clear()
-        }
+        self.__drop()
     }
 }
 

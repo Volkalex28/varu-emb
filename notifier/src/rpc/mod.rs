@@ -346,7 +346,6 @@ where
         let mut err = None;
         let res = publisher
             .publisher()
-            .inactive_is_err(true)
             .break_after_error(true)
             .set_targets([publisher.metadata()])
             .set_error_handler::<_, GetResponseError<R, S>>(|e| err = Some(e))
