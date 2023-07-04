@@ -6,7 +6,9 @@ use crate::{
     traits::*,
 };
 use core::ops::{Deref, Index};
-use embassy_time::Duration;
+use embassy_time::{Duration, Timer};
+use futures_util::{future::pending, FutureExt};
+use varuemb_utils::select;
 
 pub mod traits;
 
@@ -20,17 +22,6 @@ pub type GetRpcRequest<S, N> = RpcRequest<<S as __svc::Service<N>>::Impl>;
 pub type GetRpcSubscriber<S, N> = pubsub::Subscriber<N, Request<crate::GetPubSub<N, S>>>;
 pub type GetRpcRequestError<S, N> =
     pubsub::Error<N, Request<crate::GetPubSub<N, S>>, <S as traits::RpcProvider<N>>::Error>;
-
-// pub struct Result<T, R: traits::Rpc>(InnerResult<T, R>);
-// impl<T, R: traits::Rpc> Result<T, R> {
-//     pub fn into_inner(self) -> InnerResult<T, R> {
-//         self.0
-//     }
-
-//     pub fn print(self) {
-//         if let err
-//     }
-// }
 
 pub struct Container<R: traits::Rpc, const C: usize>
 where
@@ -323,8 +314,6 @@ where
         let mut err = None;
         publisher
             .publisher()
-            .allow_inactive(false)
-            .inactive_is_err(true)
             .break_after_error(true)
             .set_targets([publisher.metadata()])
             .set_error_handler::<_, GetResponseError<R, S>>(|e| err = Some(e))
@@ -380,23 +369,36 @@ where
             Err(ret) => return Ok(ret),
         };
 
-        loop {
-            let event = subscriber.next().await;
-            if event.meta.src != publisher.metadata() {
-                continue;
-            }
+        let meta = publisher.metadata();
+        let response = async move {
+            loop {
+                let event = subscriber.next().await;
+                if event.meta.src != publisher.metadata() {
+                    continue;
+                }
 
-            let resp = event.data();
-            if resp.id != res.id {
-                continue;
+                let resp = event.data();
+                if resp.id != res.id {
+                    continue;
+                }
+                break match resp.data {
+                    Ok(resp) => match (cb)(resp) {
+                        Some(data) => Ok(data),
+                        None => Err(pubsub::Error::IncorrectResponse(self.src, res.id)),
+                    },
+                    Err(err) => Err(pubsub::Error::Response(self.src, res.id, err)),
+                };
             }
-            break match resp.data {
-                Ok(resp) => match (cb)(resp) {
-                    Some(data) => Ok(data),
-                    None => Err(pubsub::Error::IncorrectResponse(self.src, res.id)),
-                },
-                Err(err) => Err(pubsub::Error::Response(self.src, res.id, err)),
-            };
+        };
+        let timeout = async {
+            match timeout {
+                Some(duration) => Timer::after(duration).map(|_| duration).await,
+                None => pending().await,
+            }
+        };
+        select! {
+            response = response => { response }
+            duration = timeout => { Err(pubsub::Error::Timeout(event::Metadata { id: res.id, src: self.src, dst: meta }, duration)) }
         }
     }
 

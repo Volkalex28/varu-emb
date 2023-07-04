@@ -10,7 +10,7 @@ license = "MIT"
 homepage = "https://github.com/Volkalex28/varu-emb/tree/main/notifier#readme"
 repository = "https://github.com/Volkalex28/varu-emb"
 readme = "README.md"
-categiries = ["embedded"]
+categories = ["embedded"]
 keywords = ["compile", "embassy", "proc", "execution"]
 include = [
     "/src",

@@ -9,7 +9,7 @@ license = "MIT"
 homepage = "https://github.com/Volkalex28/varu-emb#readme"
 repository = "https://github.com/Volkalex28/varu-emb"
 readme = "README.md"
-categiries = ["asynchronous", "data-structures", "embedded"]
+categories = ["asynchronous", "data-structures", "embedded"]
 keywords = ["channels", "embassy", "async", "notification", "rpc"]
 include = [
     "/src",

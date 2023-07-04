@@ -64,7 +64,7 @@ mod private {
         Err: FnMut(Error<N, E, ER>) -> (),
         Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
     {
-        pub(crate) data: E,
+        pub(crate) data: Option<E>,
         pub(crate) timeout: Option<Duration>,
         pub(crate) checker: Ch,
         pub(crate) error_handler: Err,
@@ -307,7 +307,7 @@ where
             break_after_error,
             ..
         } = self;
-        let allow_inactive = allow_inactive.unwrap_or_default();
+        let allow_inactive = allow_inactive.unwrap_or(true);
         let checker = move |state: &subscriber::State, meta| -> TargetState {
             match &selector {
                 PublishSelector::Target(targets)
@@ -323,7 +323,7 @@ where
             }
         };
         PublishConfig {
-            data,
+            data: Some(data),
             timeout,
             checker,
             inactive_is_err,
@@ -494,6 +494,103 @@ where
     }
 }
 
+fn pre_publish<P, E, Ch, Eh, ER>(
+    pub_sub: &PubSub<P>,
+    config: &mut PublishConfig<P::Notifier, E, Ch, Eh, ER>,
+) -> (
+    [Result<(GetDynSubscription<P::Notifier, E>, GetEvent<P::Notifier, E>), bool>;
+        P::Notifier::CHANNEL_COUNT],
+    PublishData,
+)
+where
+    [(); P::Notifier::ID_COUNT]:,
+    [(); P::Notifier::CHANNEL_COUNT]:,
+    [(); P::Notifier::COUNT_SERVICES]:,
+    E: __evt::Event<P::Notifier, Service = P::Service>,
+    P: traits::Publisher<E, Notifier: NotifierPublisher<E>> + traits::CanMetadata,
+    Eh: FnMut(Error<P::Notifier, E, ER>) -> (),
+    Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
+{
+    let (mut event, event_id) = event::Event::new_pubsub(pub_sub, config.data.take().unwrap());
+    event.print_pre_publish();
+
+    let mut data = PublishData::new(event_id, P::Notifier::CHANNEL_COUNT);
+    let subscribers = crate::subscribers().map(|item| {
+        let meta = item.meta();
+        let mut state = item.subscriber.state().lock().unwrap();
+        match (config.checker)(&state, meta) {
+            TargetState::Inactive if config.inactive_is_err => {
+                data.errors += 1;
+                (config.error_handler)(Error::Inactive(event.meta));
+                return Err(config.break_after_error);
+            }
+            TargetState::Filtered | TargetState::Inactive => {
+                data.not_published += 1;
+                return Err(false);
+            }
+            TargetState::Ok => (),
+        }
+        state.sending = true;
+
+        event.meta.dst = meta;
+        let event = event.clone();
+        event.print_publish();
+        Ok((item.subscriber, event))
+    });
+    (subscribers, data)
+}
+
+fn post_publish<P, E, Ch, Eh, ER>(
+    res: Result<(), Error<P::Notifier, E, ER>>,
+    config: &mut PublishConfig<P::Notifier, E, Ch, Eh, ER>,
+    subscriber: GetDynSubscription<P::Notifier, E>,
+    meta: &'static Metadata,
+    meta_evt: event::Metadata,
+    data: &mut PublishData,
+) -> bool
+where
+    [(); P::Notifier::ID_COUNT]:,
+    [(); P::Notifier::CHANNEL_COUNT]:,
+    [(); P::Notifier::COUNT_SERVICES]:,
+    E: __evt::Event<P::Notifier, Service = P::Service>,
+    P: traits::Publisher<E, Notifier: NotifierPublisher<E>> + traits::CanMetadata,
+    Eh: FnMut(Error<P::Notifier, E, ER>) -> (),
+    Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
+{
+    let mut error = false;
+    match res {
+        Ok(_) => {
+            let is_ok = !matches!(
+                (config.checker)(&subscriber.state().lock().unwrap(), meta),
+                TargetState::Ok
+            );
+            if is_ok {
+                subscriber.clear();
+                if config.inactive_is_err {
+                    data.errors += 1;
+                    error = true;
+                    (config.error_handler)(Error::Inactive(meta_evt));
+                } else {
+                    data.not_published += 1;
+                }
+            } else {
+                data.published += 1;
+            }
+        }
+        Err(err) => {
+            error = true;
+            data.errors += 1;
+            (config.error_handler)(err)
+        }
+    }
+    subscriber.state().lock().unwrap().sending = false;
+
+    if error && config.break_after_error {
+        return true;
+    }
+    false
+}
+
 impl<P, E> traits::CanPublishRaw<E> for PubSub<P>
 where
     [(); P::Notifier::ID_COUNT]:,
@@ -512,55 +609,23 @@ where
         Eh: FnMut(Error<Self::Notifier, E, ER>) -> (),
         Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
     {
-        let (mut event, event_id) = event::Event::new_pubsub(self, config.data);
-        event.print_pre_publish();
+        let (subscribers, mut data) = pre_publish(self, &mut config);
 
-        let mut data = PublishData::new(event_id, P::Notifier::CHANNEL_COUNT);
-        let subscribers = crate::subscribers().map(|item| {
-            let meta = item.meta();
-            let state = item.subscriber.state().lock().unwrap();
-            match (config.checker)(&state, meta) {
-                TargetState::Ok => {
-                    event.meta.dst = meta;
-                    Some(Some((state, item.subscriber, event.clone())))
-                }
-                TargetState::Inactive if config.inactive_is_err => {
-                    data.errors += 1;
-                    (config.error_handler)(Error::Inactive(event.meta));
-                    return Some(None);
-                }
-                TargetState::Filtered | TargetState::Inactive => {
-                    data.not_published += 1;
-                    return None;
-                }
-            }
-        });
-        drop(event);
+        for item in subscribers {
+            let (subscriber, event) = match item {
+                Ok(event) => event,
+                Err(true) => break,
+                Err(false) => continue,
+            };
 
-        for item in subscribers.into_iter().filter_map(|s| s) {
-            let mut error = false;
+            let meta = event.meta.dst;
+            let meta_evt = event.meta;
+            let res = subscriber
+                .sender()
+                .try_send(event)
+                .map_err(|TrySendError::Full(evt)| Error::Full(evt));
 
-            if let Some((mut state, subscriber, event)) = item {
-                state.sending = true;
-
-                event.print_publish();
-                match subscriber.sender().try_send(event) {
-                    Ok(_) => {
-                        data.published += 1;
-                    }
-                    Err(TrySendError::Full(err)) => {
-                        error = true;
-                        data.errors += 1;
-                        (config.error_handler)(Error::Full(err));
-                    }
-                }
-
-                state.sending = false;
-            } else {
-                error = true;
-            }
-
-            if error && config.break_after_error {
+            if post_publish(res, &mut config, subscriber, meta, meta_evt, &mut data) {
                 break;
             }
         }
@@ -576,36 +641,10 @@ where
         Eh: FnMut(Error<Self::Notifier, E, ER>) -> (),
         Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
     {
-        let (mut event, event_id) = event::Event::new_pubsub(self, config.data);
-        event.print_pre_publish();
-
-        let mut data = PublishData::new(event_id, P::Notifier::CHANNEL_COUNT);
-        let subscribers = crate::subscribers().map(|item| {
-            let meta = item.meta();
-            let mut state = item.subscriber.state().lock().unwrap();
-            match (config.checker)(&state, meta) {
-                TargetState::Ok => (),
-                TargetState::Inactive if config.inactive_is_err => {
-                    data.errors += 1;
-                    (config.error_handler)(Error::Inactive(event.meta));
-                    return Err(config.break_after_error);
-                }
-                TargetState::Filtered | TargetState::Inactive => {
-                    data.not_published += 1;
-                    return Err(false);
-                }
-            }
-            state.sending = true;
-
-            event.meta.dst = meta;
-            let event = event.clone();
-            event.print_publish();
-            Ok((state, item.subscriber, event))
-        });
-        drop(event);
+        let (subscribers, mut data) = pre_publish(self, &mut config);
 
         for item in subscribers {
-            let (mut state, subscriber, event) = match item {
+            let (subscriber, event) = match item {
                 Ok(event) => event,
                 Err(true) => break,
                 Err(false) => continue,
@@ -619,38 +658,11 @@ where
                 pending().right_future()
             };
             let res = select! {
-                _send = subscriber.sender().send(event) => {
-                    Ok(())
-                }
-                timeout = timer => {
-                    Err(Error::Timeout(meta_evt, timeout))
-                }
+                _send = subscriber.sender().send(event) => { Ok(()) }
+                timeout = timer => { Err(Error::Timeout(meta_evt, timeout)) }
             };
 
-            let mut error = false;
-            state.sending = false;
-            match res {
-                Ok(_) => {
-                    if !matches!((config.checker)(&state, meta), TargetState::Ok) {
-                        subscriber.clear();
-                        if config.inactive_is_err {
-                            data.errors += 1;
-                            (config.error_handler)(Error::Inactive(meta_evt));
-                        } else {
-                            data.not_published += 1;
-                        }
-                    } else {
-                        data.published += 1;
-                    }
-                }
-                Err(err) => {
-                    error = true;
-                    data.errors += 1;
-                    (config.error_handler)(err)
-                }
-            }
-
-            if error && config.break_after_error {
+            if post_publish(res, &mut config, subscriber, meta, meta_evt, &mut data) {
                 break;
             }
         }

@@ -97,7 +97,7 @@ impl ToTokens for Rpc<'_> {
             let duration = if let Some(duration) = duration {
                 quote!(::core::option::Option::Some(#_crate ::Duration::from_millis(#duration)))
             } else {
-                quote!(::core::option::Option::None)
+                quote!(::core::option::Option::Some(#_crate ::Duration::from_secs(10)))
             };
             if let Some(output) = output.as_ref() {
                 quote! {
