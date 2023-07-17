@@ -1,5 +1,4 @@
 #![allow(incomplete_features)]
-#![feature(const_deref)]
 #![feature(const_mut_refs)]
 #![feature(const_closures)]
 #![feature(const_trait_impl)]
@@ -14,6 +13,7 @@ pub mod macros;
 pub mod newtype;
 pub mod proc_meta_parser;
 
+pub use array_const_fn_init::array_const_fn_init;
 pub use array_init::ArrayInitializer;
 pub use newtype::*;
 pub use varuemb_utils_proc::multi_impl_block;

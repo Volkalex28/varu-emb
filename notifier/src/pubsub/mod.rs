@@ -140,7 +140,7 @@ impl<P: ~const traits::PubSub, const C: usize> Container<P, C> {
 
     pub(crate) const fn new() -> Self {
         Self {
-            inner: varuemb_utils::ArrayInitializer::init::<C, _, _>(PubSub::<P>::new),
+            inner: varuemb_utils::ArrayInitializer::init::<C, _, _>(&PubSub::<P>::new),
         }
     }
 }

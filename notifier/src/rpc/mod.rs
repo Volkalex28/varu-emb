@@ -9,7 +9,6 @@ use core::ops::{Deref, Index};
 use embassy_time::{Duration, Timer};
 use futures_util::{future::pending, FutureExt};
 use varuemb_utils::select;
-
 pub mod traits;
 
 pub type Result<T, R: traits::Rpc> = core::result::Result<

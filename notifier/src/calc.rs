@@ -50,7 +50,7 @@ where
             index: 0,
             checkers_index: 0,
             arr: [0; N::ID_COUNT],
-            checkers: varuemb_utils::ArrayInitializer::init(const |_| CheckerID::new()),
+            checkers: varuemb_utils::ArrayInitializer::init(&const |_| CheckerID::new()),
         }
     }
 }

@@ -124,7 +124,7 @@ pub mod traits {
             Assert<{ check::<N, Self>() }>: True,
         {
             const META_SERVICE: crate::Metadata = crate::Metadata::new_service::<N, Self>();
-            const META: &'static [crate::Metadata] = &Init::init::<{ Self::COUNT }, _, _>(Metadata::new::<N, Self>);
+            const META: &'static [crate::Metadata] = &Init::init::<{ Self::COUNT }, _, _>(&Metadata::new::<N, Self>);
         }
     }
 }
