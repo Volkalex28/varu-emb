@@ -13,6 +13,8 @@ pub mod macros;
 pub mod newtype;
 pub mod proc_meta_parser;
 
+use std::marker::PhantomData;
+
 pub use array_const_fn_init::array_const_fn_init;
 pub use array_init::ArrayInitializer;
 pub use newtype::*;
@@ -22,4 +24,16 @@ pub mod __private {
     pub use const_format;
     pub use embassy_futures;
     pub use paste;
+}
+
+
+#[const_trait]
+pub trait ConstDefault: Sized {
+    fn default() -> Self;
+}
+
+impl<T: ?Sized> const ConstDefault for PhantomData<T> {
+    fn default() -> Self {
+        Self
+    }
 }

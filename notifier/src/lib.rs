@@ -3,7 +3,6 @@
 #![feature(generic_const_exprs)]
 #![feature(const_closures)]
 #![feature(specialization)]
-#![feature(const_default_impls)]
 #![feature(adt_const_params)]
 #![feature(const_type_id)]
 #![feature(async_fn_in_trait)]
@@ -11,6 +10,7 @@
 #![feature(const_refs_to_cell)]
 #![allow(incomplete_features)]
 #![allow(type_alias_bounds)]
+#![feature(cfg_version)]
 
 use traits::pubsub::Subscriber as _;
 
@@ -68,7 +68,21 @@ where
 {
     use core::any::TypeId;
     use pubsub::traits::Publisher as _;
-    E::Publisher::PROTECTED && TypeId::of::<P>() != TypeId::of::<E::Publisher>()
+    cfg_if::cfg_if! {
+        if #[cfg(version("1.72"))] {
+            E::Publisher::PROTECTED
+            && unsafe {
+                std::mem::transmute::<_, u128>(TypeId::of::<P>())
+                    != std::mem::transmute::<_, u128>(TypeId::of::<E::Publisher>())
+            }
+        } else {
+        E::Publisher::PROTECTED
+            && unsafe {
+                std::mem::transmute::<_, u64>(TypeId::of::<P>())
+                    != std::mem::transmute::<_, u64>(TypeId::of::<E::Publisher>())
+            }
+        }
+    }
 }
 
 const fn is_pubsub_impl<S, N, E>() -> bool

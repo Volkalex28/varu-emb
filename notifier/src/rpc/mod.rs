@@ -8,7 +8,7 @@ use crate::{
 use core::ops::{Deref, Index};
 use embassy_time::{Duration, Timer};
 use futures_util::{future::pending, FutureExt};
-use varuemb_utils::select;
+use varuemb_utils::{select, ConstDefault};
 pub mod traits;
 
 pub type Result<T, R: traits::Rpc> = core::result::Result<
@@ -79,7 +79,7 @@ where
 {
     pubsub: pubsub::Subscription<P, Response<S::Impl>, C>,
 }
-impl<P, S, const C: usize> const Default for Subscription<P, S, C>
+impl<P, S, const C: usize> const ConstDefault for Subscription<P, S, C>
 where
     P: __pubsub::PubSub,
     Response<S::Impl>: __pubsub::IsPublisher<P>,
@@ -88,7 +88,7 @@ where
 {
     fn default() -> Self {
         Self {
-            pubsub: Default::default(),
+            pubsub: ConstDefault::default(),
         }
     }
 }

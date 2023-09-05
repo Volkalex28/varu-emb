@@ -1,3 +1,5 @@
+use varuemb_utils::ConstDefault;
+
 use crate::{
     event,
     pubsub::{__evt, traits::*},
@@ -9,9 +11,9 @@ use std::mem::ManuallyDrop;
 pub trait Mixer<N: Notifier>: core::fmt::Debug {}
 
 pub struct MixCount<P, M>(usize, PhantomData<*const (P, M)>);
-impl<P: PubSub, M: Mixer<P::Notifier>> const Default for MixCount<P, M> {
+impl<P: PubSub, M: Mixer<P::Notifier>> const ConstDefault for MixCount<P, M> {
     fn default() -> Self {
-        Self(0, Default::default())
+        Self(0, ConstDefault::default())
     }
 }
 impl<P: PubSub, M> MixCount<P, M> {

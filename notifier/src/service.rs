@@ -1,3 +1,5 @@
+use varuemb_utils::ConstDefault;
+
 use crate::{
     pubsub::{self, traits as __pub},
     rpc::{self, traits as __rpc},
@@ -20,7 +22,7 @@ where
 {
 }
 
-impl<N, S> const Default for Service<N, S>
+impl<N, S> const ConstDefault for Service<N, S>
 where
     N: __traits::Notifier,
     S: traits::Service<N>,
