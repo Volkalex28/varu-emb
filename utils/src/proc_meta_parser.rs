@@ -1,7 +1,7 @@
 use linked_hash_map::LinkedHashMap;
-use quote::ToTokens;
 use proc_macro2::TokenStream;
-use syn::{Error, spanned::Spanned};
+use quote::ToTokens;
+use syn::{spanned::Spanned, Error};
 
 pub struct Parser {
     keys: Vec<String>,
@@ -9,7 +9,10 @@ pub struct Parser {
     output: LinkedHashMap<String, TokenStream>,
 }
 impl Parser {
-    pub fn new<'a, V: IntoIterator<Item = &'a T>, T: ToString + ?Sized + 'a>(keys: V, span: proc_macro2::Span) -> Self {
+    pub fn new<'a, V: IntoIterator<Item = &'a T>, T: ToString + ?Sized + 'a>(
+        keys: V,
+        span: proc_macro2::Span,
+    ) -> Self {
         Self {
             span,
             output: Default::default(),
@@ -26,7 +29,7 @@ impl Parser {
                 } else {
                     to_parse.parse::<syn::Expr>()?.into_token_stream()
                 };
-                // let to_parse_fork = to_parse.fork(); 
+                // let to_parse_fork = to_parse.fork();
                 // let mut value = to_parse.parse::<syn::Expr>()
                 //     .map(|v| v.to_token_stream());
                 // if value.is_err() {
@@ -37,14 +40,20 @@ impl Parser {
                 //     }
                 // }
                 if self.output.insert(key.clone(), value).is_some() {
-                    return Err(syn::Error::new(meta.input.span(), format!("Key \"{key}\" already exist")));
+                    return Err(syn::Error::new(
+                        meta.input.span(),
+                        format!("Key \"{key}\" already exist"),
+                    ));
                 }
                 return Ok(());
             }
         }
         Err(Error::new(
-            meta.path.span(), 
-            format!("Unsupported attribute value with key: {}", meta.path.into_token_stream().to_string())
+            meta.path.span(),
+            format!(
+                "Unsupported attribute value with key: {}",
+                meta.path.into_token_stream().to_string()
+            ),
         ))
     }
 

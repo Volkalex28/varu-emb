@@ -47,14 +47,14 @@ impl Data {
                 attr.parse_nested_meta(|meta| parser.parse(meta))?;
 
                 this.notifier = parser.get("notifier")?;
-                this.count = parser.get("count").map_or(None, Some);
-                this.rpc = parser.get("rpc").map_or(None, Some);
+                this.count = parser.get("count").ok();
+                this.rpc = parser.get("rpc").ok();
             } else if attr.path().is_ident("notifier_publisher") {
                 let mut parser = Parser::new(["event", "protected"], attr.span());
                 attr.parse_nested_meta(|meta| parser.parse(meta))?;
 
                 let data = PublisherData {
-                    protected: parser.get("protected").map_or(None, Some),
+                    protected: parser.get("protected").ok(),
                 };
 
                 let key = parser.get::<Path>("event")?;

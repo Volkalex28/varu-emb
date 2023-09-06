@@ -10,13 +10,11 @@ macro_rules! count {
     };
 }
 
-
 #[macro_export]
 macro_rules! macro_if {
     {{ $($cond:tt)+ } then { $($then:tt)* } $(else { $($else:tt)* })?} => { $($then)* };
     {{              } then { $($then:tt)* } $(else { $($else:tt)* })?} => { $($($else)*)? };
 }
-
 
 #[macro_export]
 macro_rules! macro_if_not {
@@ -24,7 +22,6 @@ macro_rules! macro_if_not {
         $crate::macro_if! { { $($cond)* } then { $($($else)*)? } else { $($then)* } }
     };
 }
-
 
 #[macro_export]
 macro_rules! macro_def_or {

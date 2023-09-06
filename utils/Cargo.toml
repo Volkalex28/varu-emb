@@ -29,4 +29,3 @@ paste = "1.0.12"
 proc-macro2 = "1.0.56"
 quote = "1.0.26"
 varuemb-utils-proc = { path = "proc" }
-array-const-fn-init = "0.1.1"

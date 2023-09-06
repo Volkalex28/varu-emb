@@ -92,7 +92,7 @@ pub mod traits {
             [(); Self::COUNT]:,
             N: __traits::NotifierService<Self>,
         {
-            &N::get().__get().pubsub()
+            N::get().__get().pubsub()
         }
 
         async fn rpc_request(

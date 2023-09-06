@@ -1,8 +1,8 @@
 use super::{__evt, event, mixer, traits};
 use core::future::pending;
 use embassy_sync::{blocking_mutex::raw, channel};
-use varuemb_utils::ConstDefault;
 use std::sync::Mutex;
+use varuemb_utils::ConstDefault;
 
 type RawMutex = raw::CriticalSectionRawMutex;
 

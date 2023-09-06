@@ -61,7 +61,7 @@ mod private {
     where
         N: Notifier,
         E: __evt::Event<N>,
-        Err: FnMut(Error<N, E, ER>) -> (),
+        Err: FnMut(Error<N, E, ER>),
         Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
     {
         pub(crate) data: Option<E>,
@@ -204,7 +204,7 @@ pub enum PublishSelector<I: IntoIterator<Item = &'static Metadata>> {
 pub struct PublishConfigurator<'p, P, Eh, E = (), I = core::slice::Iter<'static, Metadata>, ER = ()>
 where
     P: traits::PubSub,
-    Eh: FnMut(Error<P::Notifier, E, ER>) -> (),
+    Eh: FnMut(Error<P::Notifier, E, ER>),
     I: IntoIterator<Item = &'static Metadata>,
 {
     pubsub: &'p PubSub<P>,
@@ -218,7 +218,7 @@ where
 
 impl<'p, P, E, ER, Eh, I> PublishConfigurator<'p, P, Eh, E, I, ER>
 where
-    Eh: FnMut(Error<P::Notifier, E, ER>) -> (),
+    Eh: FnMut(Error<P::Notifier, E, ER>),
     I: IntoIterator<Item = &'static Metadata, IntoIter: Clone>,
     P: traits::PubSub,
 {
@@ -242,7 +242,7 @@ where
         error_handler: EhNew,
     ) -> PublishConfigurator<'p, P, EhNew, E, I, ERNew>
     where
-        EhNew: FnMut(Error<P::Notifier, E, ERNew>) -> (),
+        EhNew: FnMut(Error<P::Notifier, E, ERNew>),
     {
         PublishConfigurator {
             error_handler,
@@ -328,7 +328,7 @@ where
             checker,
             inactive_is_err,
             break_after_error,
-            error_handler: error_handler,
+            error_handler,
             _phantom: Default::default(),
         }
     }
@@ -508,7 +508,7 @@ where
     [(); P::Notifier::COUNT_SERVICES]:,
     E: __evt::Event<P::Notifier, Service = P::Service>,
     P: traits::Publisher<E, Notifier: NotifierPublisher<E>> + traits::CanMetadata,
-    Eh: FnMut(Error<P::Notifier, E, ER>) -> (),
+    Eh: FnMut(Error<P::Notifier, E, ER>),
     Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
 {
     let (mut event, event_id) = event::Event::new_pubsub(pub_sub, config.data.take().unwrap());
@@ -554,7 +554,7 @@ where
     [(); P::Notifier::COUNT_SERVICES]:,
     E: __evt::Event<P::Notifier, Service = P::Service>,
     P: traits::Publisher<E, Notifier: NotifierPublisher<E>> + traits::CanMetadata,
-    Eh: FnMut(Error<P::Notifier, E, ER>) -> (),
+    Eh: FnMut(Error<P::Notifier, E, ER>),
     Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
 {
     let mut error = false;
@@ -606,7 +606,7 @@ where
     ) -> PublishData
     where
         E: __evt::Event<Self::Notifier>,
-        Eh: FnMut(Error<Self::Notifier, E, ER>) -> (),
+        Eh: FnMut(Error<Self::Notifier, E, ER>),
         Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
     {
         let (subscribers, mut data) = pre_publish(self, &mut config);
@@ -638,7 +638,7 @@ where
     ) -> PublishData
     where
         E: __evt::Event<Self::Notifier>,
-        Eh: FnMut(Error<Self::Notifier, E, ER>) -> (),
+        Eh: FnMut(Error<Self::Notifier, E, ER>),
         Ch: for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
     {
         let (subscribers, mut data) = pre_publish(self, &mut config);

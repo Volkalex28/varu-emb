@@ -15,7 +15,6 @@ pub mod proc_meta_parser;
 
 use std::marker::PhantomData;
 
-pub use array_const_fn_init::array_const_fn_init;
 pub use array_init::ArrayInitializer;
 pub use newtype::*;
 pub use varuemb_utils_proc::multi_impl_block;
@@ -25,7 +24,6 @@ pub mod __private {
     pub use embassy_futures;
     pub use paste;
 }
-
 
 #[const_trait]
 pub trait ConstDefault: Sized {

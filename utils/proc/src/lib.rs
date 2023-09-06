@@ -34,7 +34,7 @@ impl Parse for ItemImpl {
             tokens.extend(input.parse::<Option<Token![default]>>()?.to_token_stream());
             tokens.extend(input.parse::<Option<Token![unsafe]>>()?.to_token_stream());
             tokens.extend(input.parse::<Token![impl]>()?.to_token_stream());
-            
+
             if input.peek(Token![<]) {
                 tokens.extend(input.parse::<Generics>()?.to_token_stream());
             }
@@ -99,12 +99,11 @@ impl Parse for MultiImplBlock {
         let mut stmts = Vec::with_capacity(block.stmts.len());
         for stmt in block.stmts {
             let mut item = syn::parse2::<ItemImpl>({
-                let t = match stmt {
+                match stmt {
                     syn::Stmt::Item(syn::Item::Impl(item)) => item.into_token_stream(),
                     syn::Stmt::Item(syn::Item::Verbatim(ts)) => ts,
                     item => return Err(Error::new(item.span(), "Supports only impl blocks")),
-                };
-                t
+                }
             })?;
             item.generics.params.extend(generics.params.clone());
             if let Some(_where_clause) = generics.where_clause.as_ref() {
@@ -119,7 +118,7 @@ impl Parse for MultiImplBlock {
             let self_ty = item.self_ty.as_mut();
             if !matches!(self_ty, syn::Type::Path(syn::TypePath{ path, ..}) if path.is_ident("Self"))
             {
-                item.trait_ = Some((None, parse_quote!(#self_ty), r#for.clone()));
+                item.trait_ = Some((None, parse_quote!(#self_ty), r#for));
             }
 
             item.self_ty = parse_quote!(#ident);

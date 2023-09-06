@@ -107,9 +107,7 @@ impl Interface {
                             pat: box syn::Pat::Ident(_),
                             ..
                         },
-                    ) => {
-                        return Some(Ok(pat));
-                    }
+                    ) => Some(Ok(pat)),
                     syn::FnArg::Typed(ty) => Some(Err(Error::new(
                         ty.span(),
                         "Supported only \"name: Type\" signature",
@@ -237,7 +235,7 @@ impl Parse {
             let sig = Signature {
                 base: SigBase {
                     raw_ident: sig.ident,
-                    duration: duration,
+                    duration,
                     input: sig
                         .inputs
                         .into_iter()
@@ -259,7 +257,7 @@ impl Parse {
                                         ident.ident = alias;
                                     }
                                 }
-                                return Some(Ok(pat.clone()));
+                                Some(Ok(pat.clone()))
                             }
                             syn::FnArg::Typed(ty) => Some(Err(Error::new(
                                 ty.span(),

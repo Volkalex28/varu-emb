@@ -99,10 +99,9 @@ impl CountID {
         N: traits::NotifierService<S>,
         S: __pub::IsSubscribed<N, E> + __svc::Service<N>,
     {
-        let (_0, _1) = crate::is_pub_impl_and_count::<S, N, E>((self.0, self.1));
-        Self(_0, _1)
+        let (a, b) = crate::is_pub_impl_and_count::<S, N, E>((self.0, self.1));
+        Self(a, b)
     }
-
 }
 
 impl const ConstDefault for CountID {
