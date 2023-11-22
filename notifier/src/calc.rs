@@ -1,3 +1,5 @@
+use varuemb_utils::ConstDefault;
+
 use crate::{event::traits as __evt, pubsub::traits as __pub, service::traits as __svc, traits};
 
 pub(crate) struct CheckerID<N, E>
@@ -38,7 +40,7 @@ where
     pub(crate) checkers: [CheckerID<N, E>; N::COUNT_SERVICES],
 }
 
-impl<N, E> const Default for CalcID<N, E>
+impl<N, E> const ConstDefault for CalcID<N, E>
 where
     N: traits::NotifierServiceEvent<E>,
     E: __evt::Event<N, Service: __svc::Service<N, Impl: __pub::Publisher<E>>>,
@@ -50,7 +52,7 @@ where
             index: 0,
             checkers_index: 0,
             arr: [0; N::ID_COUNT],
-            checkers: varuemb_utils::ArrayInitializer::init(const |_| CheckerID::new()),
+            checkers: varuemb_utils::ArrayInitializer::init(&const |_| CheckerID::new()),
         }
     }
 }
@@ -97,11 +99,12 @@ impl CountID {
         N: traits::NotifierService<S>,
         S: __pub::IsSubscribed<N, E> + __svc::Service<N>,
     {
-        let (_0, _1) = crate::is_pub_impl_and_count::<S, N, E>((self.0, self.1));
-        Self(_0, _1)
+        let (a, b) = crate::is_pub_impl_and_count::<S, N, E>((self.0, self.1));
+        Self(a, b)
     }
 }
-impl const Default for CountID {
+
+impl const ConstDefault for CountID {
     fn default() -> Self {
         Self(0, 0)
     }

@@ -2,7 +2,7 @@ use heck::ToUpperCamelCase;
 use linked_hash_map::LinkedHashMap;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
-use syn::{spanned::Spanned, Error, ItemImpl, LitBool, Meta, PatType, Type, Attribute, Expr};
+use syn::{spanned::Spanned, Attribute, Error, Expr, ItemImpl, LitBool, Meta, PatType, Type};
 use varuemb_utils::proc_meta_parser::Parser;
 
 #[derive(Debug, Default)]
@@ -34,7 +34,11 @@ pub struct Interface {
 }
 impl Default for Interface {
     fn default() -> Self {
-        Interface { skip: true, alias: None, commands: Default::default() }
+        Interface {
+            skip: true,
+            alias: None,
+            commands: Default::default(),
+        }
     }
 }
 impl Interface {
@@ -53,7 +57,11 @@ impl Interface {
             let sig = Self::make_sig(item)?;
             commands.push(sig);
         }
-        Ok(Self { skip, alias, commands })
+        Ok(Self {
+            skip,
+            alias,
+            commands,
+        })
     }
 
     fn make_sig(item: syn::ItemFn) -> Result<InterfaceSignature, Error> {
@@ -64,7 +72,7 @@ impl Interface {
             let attr_span = attr.path().span();
             let meta_span = attr.meta.span();
             if attr.path().is_ident("response") {
-                let syn::Meta::List(syn::MetaList { tokens, ..}) = attr.meta else {
+                let syn::Meta::List(syn::MetaList { tokens, .. }) = attr.meta else {
                     return Err(Error::new(meta_span, "Incorrect attribute"));
                 };
                 if response.is_some() {
@@ -72,7 +80,7 @@ impl Interface {
                 }
                 response = Some(tokens);
             } else if attr.path().is_ident("duration") {
-                let syn::Meta::List(syn::MetaList { tokens, ..}) = attr.meta else {
+                let syn::Meta::List(syn::MetaList { tokens, .. }) = attr.meta else {
                     return Err(Error::new(meta_span, "Incorrect attribute"));
                 };
                 if duration.is_some() {
@@ -80,7 +88,10 @@ impl Interface {
                 }
                 duration = Some(syn::parse2::<Expr>(tokens)?);
             } else {
-                return Err(Error::new(attr_span, "Support only \"response\" or \"duration\" attribute"));
+                return Err(Error::new(
+                    attr_span,
+                    "Support only \"response\" or \"duration\" attribute",
+                ));
             }
         }
         let base = SigBase {
@@ -96,9 +107,7 @@ impl Interface {
                             pat: box syn::Pat::Ident(_),
                             ..
                         },
-                    ) => {
-                        return Some(Ok(pat));
-                    }
+                    ) => Some(Ok(pat)),
                     syn::FnArg::Typed(ty) => Some(Err(Error::new(
                         ty.span(),
                         "Supported only \"name: Type\" signature",
@@ -106,11 +115,11 @@ impl Interface {
                     syn::FnArg::Receiver(_) => None,
                 })
                 .try_collect()?,
-                output: match item.sig.output {
-                    syn::ReturnType::Type(_, box ty) => Some(ty),
-                    syn::ReturnType::Default => None,
-                },
-            };
+            output: match item.sig.output {
+                syn::ReturnType::Type(_, box ty) => Some(ty),
+                syn::ReturnType::Default => None,
+            },
+        };
         Ok(InterfaceSignature {
             base,
             response,
@@ -153,13 +162,16 @@ pub struct Parse {
 
 impl Parse {
     pub fn new(input: ItemImpl) -> Result<Self, Error> {
-        let handlers = input.items.into_iter().filter_map(|item| match item {
-            syn::ImplItem::Fn(_fn) => Some(_fn.into_token_stream()),
-            syn::ImplItem::Verbatim(tokens) => Some(tokens),
-            _ => None,
-        })
-        .map(syn::parse2)
-        .try_collect()?;
+        let handlers = input
+            .items
+            .into_iter()
+            .filter_map(|item| match item {
+                syn::ImplItem::Fn(_fn) => Some(_fn.into_token_stream()),
+                syn::ImplItem::Verbatim(tokens) => Some(tokens),
+                _ => None,
+            })
+            .map(syn::parse2)
+            .try_collect()?;
         Self::parse((*input.self_ty).clone(), handlers)
     }
 
@@ -178,15 +190,17 @@ impl Parse {
                     if !matches!(attr.meta, Meta::List(_)) {
                         continue;
                     }
-                    let mut parser =
-                        Parser::new(["alias", "response", "no_response", "duration"], attr.span());
+                    let mut parser = Parser::new(
+                        ["alias", "response", "no_response", "duration"],
+                        attr.span(),
+                    );
                     attr.parse_nested_meta(|meta| parser.parse(meta))?;
                     if let Ok(alias) = parser.get("alias") {
                         sig.ident = alias;
                     }
-                    if let Ok(ty) = parser.get::<Type>("response")
-                    {
-                        sig.output = syn::ReturnType::Type(syn::token::RArrow::default(), Box::new(ty));
+                    if let Ok(ty) = parser.get::<Type>("response") {
+                        sig.output =
+                            syn::ReturnType::Type(syn::token::RArrow::default(), Box::new(ty));
                     }
                     no_response = parser.get("no_response").ok().as_ref().map(LitBool::value);
                     duration = parser.get("duration").ok();
@@ -214,11 +228,14 @@ impl Parse {
                     interface = Some(Interface::parse(&attr)?)
                 }
             }
-            let key = Ident::new(&sig.ident.to_string().to_upper_camel_case(), sig.ident.span());
+            let key = Ident::new(
+                &sig.ident.to_string().to_upper_camel_case(),
+                sig.ident.span(),
+            );
             let sig = Signature {
-                base: SigBase {  
+                base: SigBase {
                     raw_ident: sig.ident,
-                    duration: duration,
+                    duration,
                     input: sig
                         .inputs
                         .into_iter()
@@ -229,7 +246,9 @@ impl Parse {
                                     ..
                                 },
                             ) => {
-                                let syn::Pat::Ident(ident) = pat.pat.as_mut() else { unreachable!() };
+                                let syn::Pat::Ident(ident) = pat.pat.as_mut() else {
+                                    unreachable!()
+                                };
                                 if let Some((data, _)) = data.remove(&ident.ident.to_string()) {
                                     if data.skipped.map_or(false, |v| v.value) {
                                         return None;
@@ -238,7 +257,7 @@ impl Parse {
                                         ident.ident = alias;
                                     }
                                 }
-                                return Some(Ok(pat.clone()));
+                                Some(Ok(pat.clone()))
                             }
                             syn::FnArg::Typed(ty) => Some(Err(Error::new(
                                 ty.span(),
@@ -250,7 +269,8 @@ impl Parse {
                     output: match sig.output {
                         syn::ReturnType::Type(_, box ty) => Some(ty),
                         syn::ReturnType::Default => None,
-                    }.filter(|_| no_response.map_or(true, |v| !v)),
+                    }
+                    .filter(|_| no_response.map_or(true, |v| !v)),
                 },
                 interface: interface.unwrap_or_default(),
             };

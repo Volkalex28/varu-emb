@@ -2,6 +2,7 @@ use super::{__evt, event, mixer, traits};
 use core::future::pending;
 use embassy_sync::{blocking_mutex::raw, channel};
 use std::sync::Mutex;
+use varuemb_utils::ConstDefault;
 
 type RawMutex = raw::CriticalSectionRawMutex;
 
@@ -19,7 +20,7 @@ where
     state: Mutex<State>,
 }
 
-impl<P, E, const C: usize> const Default for Subscription<P, E, C>
+impl<P, E, const C: usize> const ConstDefault for Subscription<P, E, C>
 where
     P: traits::PubSub,
     E: traits::IsPublisher<P>,

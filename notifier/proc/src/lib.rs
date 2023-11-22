@@ -1,5 +1,6 @@
 #![feature(box_patterns)]
 #![feature(iterator_try_collect)]
+#![feature(const_trait_impl)]
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
@@ -23,7 +24,7 @@ impl Default for Meta {
     }
 }
 
-/// This is a procedural macro that provides auto-generation of the "Notifier" structure 
+/// This is a procedural macro that provides auto-generation of the "Notifier" structure
 /// for storing and managing communication channels between services
 #[proc_macro_attribute]
 pub fn notifier(attrs: TokenStream, input: TokenStream) -> TokenStream {

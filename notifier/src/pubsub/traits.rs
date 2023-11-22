@@ -34,6 +34,8 @@ where
     }
 }
 
+/// # Safety
+/// TODO: Add safety description
 pub(crate) unsafe trait GetPubSub<P: PubSub> {
     fn __get(&self, index: usize) -> &super::PubSub<P>;
 }
@@ -137,7 +139,7 @@ mod private {
         ) -> root::PublishData
         where
             E: __evt::Event<Self::Notifier>,
-            Eh: FnMut(root::Error<Self::Notifier, E, ER>) -> (),
+            Eh: FnMut(root::Error<Self::Notifier, E, ER>),
             Ch: for<'s> Fn(
                 &'s root::subscriber::State,
                 &'static root::Metadata,
@@ -148,7 +150,7 @@ mod private {
         ) -> root::PublishData
         where
             E: __evt::Event<Self::Notifier>,
-            Eh: FnMut(root::Error<Self::Notifier, E, ER>) -> (),
+            Eh: FnMut(root::Error<Self::Notifier, E, ER>),
             Ch: for<'s> Fn(
                 &'s root::subscriber::State,
                 &'static root::Metadata,

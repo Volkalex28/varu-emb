@@ -1,5 +1,4 @@
 #![allow(incomplete_features)]
-#![feature(const_deref)]
 #![feature(const_mut_refs)]
 #![feature(const_closures)]
 #![feature(const_trait_impl)]
@@ -14,6 +13,8 @@ pub mod macros;
 pub mod newtype;
 pub mod proc_meta_parser;
 
+use std::marker::PhantomData;
+
 pub use array_init::ArrayInitializer;
 pub use newtype::*;
 pub use varuemb_utils_proc::multi_impl_block;
@@ -22,4 +23,15 @@ pub mod __private {
     pub use const_format;
     pub use embassy_futures;
     pub use paste;
+}
+
+#[const_trait]
+pub trait ConstDefault: Sized {
+    fn default() -> Self;
+}
+
+impl<T: ?Sized> const ConstDefault for PhantomData<T> {
+    fn default() -> Self {
+        Self
+    }
 }

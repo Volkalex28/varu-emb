@@ -91,7 +91,7 @@ impl<'a> Service<'a> {
                 .iter()
                 .flat_map(|(_, data)| {
                     let name = &data.name;
-                    quote! { #name: ::core::default::Default::default(),}
+                    quote! { #name: ::varuemb_utils::ConstDefault::default(),}
                 })
                 .collect::<TokenStream>();
             quote! {
@@ -263,7 +263,7 @@ impl<'a> ToTokens for Service<'a> {
         let out = self.generate();
         tokens.extend(quote! {
             use #_crate ::service::traits::Service as _;
-            const _: () = { #out }; 
+            const _: () = { #out };
         })
     }
 }

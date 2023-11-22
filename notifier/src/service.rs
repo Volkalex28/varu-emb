@@ -1,3 +1,5 @@
+use varuemb_utils::ConstDefault;
+
 use crate::{
     pubsub::{self, traits as __pub},
     rpc::{self, traits as __rpc},
@@ -20,7 +22,7 @@ where
 {
 }
 
-impl<N, S> const Default for Service<N, S>
+impl<N, S> const ConstDefault for Service<N, S>
 where
     N: __traits::Notifier,
     S: traits::Service<N>,
@@ -90,7 +92,7 @@ pub mod traits {
             [(); Self::COUNT]:,
             N: __traits::NotifierService<Self>,
         {
-            &N::get().__get().pubsub()
+            N::get().__get().pubsub()
         }
 
         async fn rpc_request(
@@ -124,7 +126,7 @@ pub mod traits {
             Assert<{ check::<N, Self>() }>: True,
         {
             const META_SERVICE: crate::Metadata = crate::Metadata::new_service::<N, Self>();
-            const META: &'static [crate::Metadata] = &Init::init::<{ Self::COUNT }, _, _>(Metadata::new::<N, Self>);
+            const META: &'static [crate::Metadata] = &Init::init::<{ Self::COUNT }, _, _>(&Metadata::new::<N, Self>);
         }
     }
 }

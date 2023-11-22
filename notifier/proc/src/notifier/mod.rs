@@ -105,7 +105,7 @@ impl<'a> ToTokens for Notifier<'a> {
                     let attrs = &fields_attrs[i];
                     let field = quote!(
                         #attrs
-                        #ident: ::core::default::Default::default(),
+                        #ident: ::varuemb_utils::ConstDefault::default(),
                     );
                     (count, field)
                 })
@@ -210,6 +210,7 @@ impl<'a> ToTokens for Notifier<'a> {
                 })
                 .collect::<TokenStream>();
             quote! {
+                use varuemb_utils::ConstDefault;
                 impl<__E> #_crate ::traits::NotifierServiceEvent<__E> for #ident
                 where
                     __E: #_crate ::event::traits::Event<Self>,
