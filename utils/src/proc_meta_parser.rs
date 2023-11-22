@@ -24,25 +24,16 @@ impl Parser {
         for key in self.keys.iter() {
             if meta.path.is_ident(key) {
                 let to_parse = meta.value()?;
-                let value = if to_parse.peek(syn::Token![&]) {
-                    to_parse.parse::<syn::TypeReference>()?.into_token_stream()
-                } else {
+                
+                let value = if to_parse.fork().parse::<syn::Expr>().is_ok() {
                     to_parse.parse::<syn::Expr>()?.into_token_stream()
+                } else {
+                    to_parse.parse::<syn::Type>()?.into_token_stream()
                 };
-                // let to_parse_fork = to_parse.fork();
-                // let mut value = to_parse.parse::<syn::Expr>()
-                //     .map(|v| v.to_token_stream());
-                // if value.is_err() {
-                //     value = to_parse_fork.parse::<syn::Type>().map(|v| v.to_token_stream());
-                //     // update buffer
-                //     if value.is_ok() {
-                //         _ = to_parse.parse::<syn::Type>();
-                //     }
-                // }
                 if self.output.insert(key.clone(), value).is_some() {
                     return Err(syn::Error::new(
                         meta.input.span(),
-                        format!("Key \"{key}\" already exist"),
+                        format!("Attribute '{key}' already exist"),
                     ));
                 }
                 return Ok(());
@@ -51,7 +42,7 @@ impl Parser {
         Err(Error::new(
             meta.path.span(),
             format!(
-                "Unsupported attribute value with key: {}",
+                "Unsupported value for '{}' attribute",
                 meta.path.into_token_stream().to_string()
             ),
         ))
@@ -60,8 +51,8 @@ impl Parser {
     pub fn get<T: syn::parse::Parse>(&mut self, key: impl ToString) -> Result<T, Error> {
         let key = key.to_string();
         let Some(tokens) = self.output.remove(&key) else { 
-            return Err(Error::new(self.span, format!("Key \"{key}\" not found")));
+            return Err(Error::new(self.span, format!("Attribute '{key}' not found")));
         };
-        Ok(syn::parse2(tokens).expect("get"))
+        syn::parse2(tokens)
     }
 }
