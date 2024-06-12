@@ -6,7 +6,7 @@ macro_rules! const_wrapper {
 #[macro_export]
 macro_rules! count {
     ( $( $e:stmt ,)* ) => {
-        ${ count(e) }
+        ${ count($e) }
     };
 }
 

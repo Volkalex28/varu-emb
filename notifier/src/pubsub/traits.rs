@@ -12,7 +12,7 @@ pub trait PubSub: Sized + 'static {
     type Notifier: Notifier;
     type Service: __svc::Service<Self::Notifier, Impl = Self>;
 
-    fn __new() -> Self;
+    const NEW: Self;
 }
 pub trait Publisher<E>: PubSub {
     const PROTECTED: bool = false;

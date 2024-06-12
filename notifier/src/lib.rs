@@ -5,12 +5,21 @@
 #![feature(specialization)]
 #![feature(adt_const_params)]
 #![feature(const_type_id)]
-#![feature(async_fn_in_trait)]
 #![feature(macro_metavar_expr)]
 #![feature(const_refs_to_cell)]
 #![allow(incomplete_features)]
 #![allow(type_alias_bounds)]
 #![feature(cfg_version)]
+
+#![allow(async_fn_in_trait)]
+#![feature(effects)]
+
+#![feature(maybe_uninit_uninit_array)]
+#![feature(const_maybe_uninit_uninit_array)]
+#![feature(const_mut_refs)]
+#![feature(const_maybe_uninit_write)]
+#![feature(maybe_uninit_array_assume_init)]
+#![feature(const_maybe_uninit_array_assume_init)]
 
 use traits::pubsub::Subscriber as _;
 

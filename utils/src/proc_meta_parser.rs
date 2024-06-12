@@ -27,8 +27,10 @@ impl Parser {
                 
                 let value = if to_parse.fork().parse::<syn::Expr>().is_ok() {
                     to_parse.parse::<syn::Expr>()?.into_token_stream()
-                } else {
+                } else if to_parse.fork().parse::<syn::Type>().is_ok() {
                     to_parse.parse::<syn::Type>()?.into_token_stream()
+                } else {
+                    return Err(meta.error(format!("Error parsing: {key}")))
                 };
                 if self.output.insert(key.clone(), value).is_some() {
                     return Err(syn::Error::new(

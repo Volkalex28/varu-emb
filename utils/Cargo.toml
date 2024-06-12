@@ -1,9 +1,9 @@
 [package]
 name = "varuemb-utils"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 resolver = "2"
-rust-version = "1.68"
+rust-version = "1.77"
 authors = ["Volkalex28 <anan20000228@gmail.com>"]
 description = """Useful Embedded Utilities for Rust"""
 license = "MIT"
@@ -22,7 +22,7 @@ include = [
 [dependencies]
 bytemuck = "1.14.0"
 const_format = "0.2.32"
-embassy-futures = "0.1.0"
+embassy-futures = "0.1.1"
 linked-hash-map = "0.5.6"
 syn = "2.0.39"
 paste = "1.0.14"

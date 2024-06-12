@@ -96,7 +96,7 @@ impl<'a> ToTokens for Notifier<'a> {
                 .enumerate()
                 .map(|(i, field)| {
                     let ty = &field.ty;
-                    let ident = &field.ident;
+                    let f_ident = &field.ident;
                     let f_attrs = &fields_attrs[i];
                     let count = quote!(
                         #f_attrs
@@ -105,7 +105,7 @@ impl<'a> ToTokens for Notifier<'a> {
                     let attrs = &fields_attrs[i];
                     let field = quote!(
                         #attrs
-                        #ident: ::varuemb_utils::ConstDefault::default(),
+                        #f_ident: #_crate ::GetService::<#ident, #ty>::default(),
                     );
                     (count, field)
                 })
@@ -210,7 +210,6 @@ impl<'a> ToTokens for Notifier<'a> {
                 })
                 .collect::<TokenStream>();
             quote! {
-                use varuemb_utils::ConstDefault;
                 impl<__E> #_crate ::traits::NotifierServiceEvent<__E> for #ident
                 where
                     __E: #_crate ::event::traits::Event<Self>,

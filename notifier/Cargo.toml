@@ -1,8 +1,8 @@
 [package]
 name = "varuemb-notifier"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.77"
 authors = ["Volkalex28 <anan20000228@gmail.com>"]
 description = """
     varuemb-notifier allows to create and configure synchronous and asynchronous pub-sub interface
@@ -24,10 +24,10 @@ include = [
 [dependencies]
 anyhow = "1.0.75"
 cfg-if = "1.0.0"
-embassy-sync = { version = "0.2.0" }
-embassy-time = { version = "0.1.0"}
-futures-util = "0.3.28"
-heapless = "0.7.16"
-log = "0.4.17"
+embassy-sync = { version = "0.6.0" }
+embassy-time = { version = "0.3.0"}
+futures-util = "0.3.30"
+heapless = "0.8.0"
+log = "0.4.21"
 varuemb-notifier-proc = { path = "proc" }
 varuemb-utils = { path = "../utils" }
