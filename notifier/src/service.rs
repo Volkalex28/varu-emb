@@ -1,5 +1,3 @@
-use varuemb_utils::ConstDefault;
-
 use crate::{
     pubsub::{self, traits as __pub},
     rpc::{self, traits as __rpc},
@@ -22,13 +20,13 @@ where
 {
 }
 
-impl<N, S> const ConstDefault for Service<N, S>
+impl<N, S> Service<N, S>
 where
     N: __traits::Notifier,
     S: traits::Service<N>,
     [(); S::COUNT]:,
 {
-    fn default() -> Self {
+    pub const fn default() -> Self {
         Self {
             pubsub: pubsub::Container::<S::Impl, { S::COUNT }>::new(),
         }
@@ -85,7 +83,7 @@ pub mod traits {
 
     pub trait Service<N: __traits::Notifier>: Sized {
         const COUNT: usize;
-        type Impl: ~const __pub::PubSub<Notifier = N, Service = Self>;
+        type Impl: __pub::PubSub<Notifier = N, Service = Self>;
 
         fn notif() -> &'static pubsub::Container<Self::Impl, { Self::COUNT }>
         where
@@ -126,7 +124,13 @@ pub mod traits {
             Assert<{ check::<N, Self>() }>: True,
         {
             const META_SERVICE: crate::Metadata = crate::Metadata::new_service::<N, Self>();
-            const META: &'static [crate::Metadata] = &Init::init::<{ Self::COUNT }, _, _>(&Metadata::new::<N, Self>);
+            const META: &'static [crate::Metadata] = &unsafe {
+                let mut init = Init::<_, { Self::COUNT }>::new();
+                while let Some((i, item)) = init.next() {
+                    item.init(Metadata::new(i))
+                }
+                init.finish()
+            };
         }
     }
 }

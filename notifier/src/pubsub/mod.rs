@@ -130,17 +130,25 @@ where
     }
 }
 
-impl<P: ~const traits::PubSub, const C: usize> Container<P, C> {
+impl<P: traits::PubSub + std::marker::Destruct, const C: usize> Container<P, C> {
     pub fn metadata_service(&self) -> &'static Metadata
     where
         P: traits::CanMetadata,
     {
         <P as traits::CanMetadata>::metadata_service()
     }
+}
 
-    pub(crate) const fn new() -> Self {
+impl<P: traits::PubSub, const C: usize> Container<P, C> {
+    pub const fn new() -> Self {
         Self {
-            inner: varuemb_utils::ArrayInitializer::init::<C, _, _>(&PubSub::<P>::new),
+            inner: unsafe {
+                let mut init = varuemb_utils::ArrayInitializer::new();
+                while let Some((i, item)) = init.next() {
+                    item.init(PubSub::new(i))
+                }
+                init.finish()
+            }
         }
     }
 }
@@ -365,17 +373,17 @@ pub struct PubSub<P: traits::PubSub> {
     event_id: AtomicUsize,
 }
 
-impl<P: ~const traits::PubSub> PubSub<P> {
-    pub(crate) const fn new(i: usize) -> Self {
+impl<P: traits::PubSub> PubSub<P> {
+    pub const fn new(i: usize) -> Self {
         Self {
             index: AtomicUsize::new(i),
-            inner: P::__new(),
+            inner: P::NEW,
             event_id: AtomicUsize::new(0),
         }
     }
 }
 
-impl<N, P: ~const traits::PubSub<Notifier = N>> PubSub<P>
+impl<N, P: traits::PubSub<Notifier = N>> PubSub<P>
 where
     N: NotifierService<P::Service>,
 {

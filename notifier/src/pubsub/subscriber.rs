@@ -2,7 +2,6 @@ use super::{__evt, event, mixer, traits};
 use core::future::pending;
 use embassy_sync::{blocking_mutex::raw, channel};
 use std::sync::Mutex;
-use varuemb_utils::ConstDefault;
 
 type RawMutex = raw::CriticalSectionRawMutex;
 
@@ -20,13 +19,13 @@ where
     state: Mutex<State>,
 }
 
-impl<P, E, const C: usize> const ConstDefault for Subscription<P, E, C>
+impl<P, E, const C: usize> Subscription<P, E, C>
 where
     P: traits::PubSub,
     E: traits::IsPublisher<P>,
     crate::assert::AssertStr<{ super::assert::subscriber::<P, E>() }>: crate::assert::True,
 {
-    fn default() -> Self {
+    pub const fn default() -> Self {
         Self::new()
     }
 }
@@ -69,7 +68,7 @@ pub trait DynSubscription<E: 'static> {
     fn receiver(&'static self) -> channel::DynamicReceiver<'static, E>;
     fn state(&'static self) -> &'static Mutex<State>;
     fn clear(&'static self) {
-        while self.receiver().try_recv().is_ok() {}
+        while self.receiver().try_receive().is_ok() {}
     }
 }
 
@@ -117,14 +116,14 @@ where
         if !self.state {
             return None;
         }
-        self.channel.receiver().try_recv().ok()
+        self.channel.receiver().try_receive().ok()
     }
 
     pub async fn next(&mut self) -> event::Event<N, E> {
         if !self.state {
             return pending().await;
         }
-        self.channel.receiver().recv().await
+        self.channel.receiver().receive().await
     }
 
     pub fn try_next_raw(&mut self) -> Option<E> {

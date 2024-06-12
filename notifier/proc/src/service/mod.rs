@@ -91,16 +91,21 @@ impl<'a> Service<'a> {
                 .iter()
                 .flat_map(|(_, data)| {
                     let name = &data.name;
-                    quote! { #name: ::varuemb_utils::ConstDefault::default(),}
+                    match &data.ty {
+                        data::SubscriberType::PubSub => {
+                            quote!( #name: #_crate ::pubsub::Subscription::default(),)
+                        }
+                        data::SubscriberType::Rpc => {
+                            quote!( #name: #_crate ::rpc::Subscription::default(),)
+                        }
+                    }
                 })
                 .collect::<TokenStream>();
             quote! {
                 impl const #_crate ::pubsub::traits::PubSub for #_impl {
                     type Service = #_ident;
                     type Notifier = #_notif;
-                    fn __new() -> Self {
-                        Self { #fields }
-                    }
+                    const NEW: Self = Self { #fields };
                 }
             }
         });

@@ -1,44 +1,47 @@
 use core::mem::MaybeUninit as UnInit;
-use std::marker::Destruct;
 
-pub struct ArrayInitializer {}
+pub struct Item<'a, T> {
+    i: &'a mut usize,
+    inner: &'a mut UnInit<T>,
+}
+
+impl<'a, T> Item<'a, T> {
+    pub const fn init(self, value: T) {
+        self.inner.write(value);
+        *self.i += 1;
+    }
+}
+
+pub struct ArrayInitializer<T, const S: usize> {
+    i: usize,
+    data: [UnInit<T>; S],
+}
 
 #[allow(unused)]
-impl ArrayInitializer {
-    pub const fn init<const S: usize, T, F: ~const Fn(usize) -> T>(init_func: &F) -> [T; S] {
-        let mut i = 0;
-        let mut ret = UnInit::<[T; S]>::uninit().transpose();
-        let ret_data = loop {
-            if i >= S {
-                break ret;
-            }
-            ret[i].write(init_func(i));
-            i += 1;
-        };
-        unsafe { ret_data.transpose().assume_init() }
+impl<T, const S: usize> ArrayInitializer<T, S> {
+    pub const fn new() -> Self {
+        Self {
+            i: 0,
+            data: UnInit::uninit_array(),
+        }
     }
 
-    const fn with_data<T, D, const S: usize, F>(init_func: &F, data: D) -> [T; S]
-    where
-        T: ~const Destruct,
-        D: ~const Destruct,
-        F: ~const Fn(usize, D) -> (T, D),
-    {
-        let mut i = 0;
-        let mut data = data;
-
-        let mut ret = UnInit::<[T; S]>::uninit().transpose();
-        let ret_data = loop {
-            if i >= S {
-                break ret;
-            }
-
-            let (new_value, new_data) = init_func(i, data);
-
-            ret[i].write(new_value);
-            data = new_data;
-            i += 1;
+    pub const fn next(&mut self) -> Option<(usize, Item<T>)> {
+        if self.i == S {
+            return None;
+        }
+        let index = self.i;
+        let item = Item {
+            i: &mut self.i,
+            inner: &mut self.data[index],
         };
-        unsafe { ret_data.transpose().assume_init() }
+        Some((index, item))
+    }
+
+    pub const unsafe fn finish(self) -> [T; S] {
+        if self.i != S {
+            panic!()
+        }
+        UnInit::array_assume_init(self.data)
     }
 }
