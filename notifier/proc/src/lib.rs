@@ -19,7 +19,7 @@ struct Meta {
 impl Default for Meta {
     fn default() -> Self {
         Self {
-            crate_ident: quote!(::varuemb_notifier),
+            crate_ident: quote!(::varuemb::notifier),
         }
     }
 }

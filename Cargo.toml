@@ -1,8 +1,8 @@
 [package]
 name = "varuemb"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.77"
 authors = ["Volkalex28 <anan20000228@gmail.com>"]
 description = """Toolchain for easy creation of asynchronous embedded applications on rust-lang"""
 license = "MIT"
@@ -19,11 +19,15 @@ include = [
     "/LICENSE",
 ]
 
-[dependencies.varuemb-utils]
-path = "utils/"
+# [dependencies.varuemb-utils]
+# path = "utils/"
 
-[dependencies.varuemb-notifier]
-path = "notifier/"
+# [dependencies.varuemb-notifier]
+# path = "notifier/"
+
+[dependencies]
+varuemb-notifier = { path = "notifier" }
+varuemb-utils    = { path = "utils" }
 
 [workspace]
 members = ["utils", "notifier"]
