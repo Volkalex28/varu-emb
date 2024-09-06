@@ -1,0 +1,18 @@
+[package]
+name = "varuemb-lockfree"
+
+categories  = ["lockfree"]
+description = """Lock Free data structures"""
+include     = ["/src"]
+keywords    = ["lockfree", "linked-list", "intrusive"]
+readme      = "README.md"
+
+authors.workspace      = true
+edition.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+repository.workspace   = true
+rust-version.workspace = true
+version.workspace      = true
+
+[dependencies]

@@ -1,10 +1,19 @@
-// pub extern crate varuemb_notifier as notifier;
-// pub extern crate varuemb_utils as utils;
+#![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod notifier {
-    pub use varuemb_notifier::*;
-}
+#[cfg(feature = "cross")]
+pub use cross;
 
-pub mod utils {
-    pub use varuemb_utils::*;
-}
+#[cfg(feature = "devices")]
+pub use devices;
+
+#[cfg(feature = "executor")]
+pub use executor;
+
+#[cfg(feature = "lockfree")]
+pub use lockfree;
+
+#[cfg(feature = "notifier")]
+pub use notifier;
+
+#[cfg(feature = "utils")]
+pub use utils;

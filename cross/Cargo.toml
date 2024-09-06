@@ -1,0 +1,21 @@
+[package]
+name = "varuemb-cross"
+
+authors.workspace      = true
+edition.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+repository.workspace   = true
+rust-version.workspace = true
+version.workspace      = true
+
+[features]
+std = ["embedded-io/std"]
+
+[dependencies]
+embedded-hal       = { version = "1.0.0" }
+embedded-hal-async = { version = "1.0.0" }
+embedded-io        = { version = "0.6.1" }
+embedded-io-async  = { version = "0.6.1" }
+forward-traits     = { git = "https://github.com/Volkalex28/forward-traits.git", branch = "asynch" }
+proc               = { path = "proc", package = "varuemb-cross-proc" }

@@ -195,39 +195,3 @@ macro_rules! join {
         $crate::__private::paste::paste! { __join::Join::new($($fut,)+) }
     }};
 }
-
-#[derive(Debug)]
-pub enum MaybeDone<Fut: core::future::Future> {
-    Future(Fut),
-    Done(Fut::Output),
-    Gone,
-}
-
-impl<Fut: core::future::Future> MaybeDone<Fut> {
-    pub fn poll(self: core::pin::Pin<&mut Self>, cx: &mut core::task::Context<'_>) -> bool {
-        let this = unsafe { self.get_unchecked_mut() };
-        match this {
-            Self::Future(fut) => match unsafe { core::pin::Pin::new_unchecked(fut) }.poll(cx) {
-                core::task::Poll::Ready(res) => {
-                    *this = Self::Done(res);
-                    true
-                }
-                core::task::Poll::Pending => false,
-            },
-            _ => true,
-        }
-    }
-
-    pub fn take_output(&mut self) -> Fut::Output {
-        match &*self {
-            Self::Done(_) => {}
-            Self::Future(_) | Self::Gone => panic!("take_output when MaybeDone is not done."),
-        }
-        match core::mem::replace(self, Self::Gone) {
-            MaybeDone::Done(output) => output,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl<Fut: core::future::Future + Unpin> Unpin for MaybeDone<Fut> {}

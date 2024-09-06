@@ -1,3 +1,5 @@
+use core::sync::atomic::Ordering;
+
 use crate::{
     assert::*,
     event,
@@ -62,7 +64,7 @@ where
         super::subscriber::Subscriber::new(self.channel())
     }
     fn count(&'static self) -> usize {
-        self.channel().state().lock().unwrap().receivers
+        self.channel().state().receivers.load(Ordering::Relaxed)
     }
 }
 
@@ -108,14 +110,14 @@ pub trait CanPublish<E: __evt::Event<Self::Notifier>>: CanPublishRaw<E> {
             super::Error::Full(event) => event.print_publish_err_full(),
             super::Error::IncorrectResponse(meta, id) => {
                 log::error!(
-                    target: &format!("Pub<{}>", meta.name()),
+                    target: &crate::log_target(meta.name()),
                     "Service {} expects another response on request {}",
                     meta.name(),
                     id
                 )
             }
             super::Error::Response(meta, id, err) => log::error!(
-                target: &format!("Pub<{}>", meta.name()),
+                target: &crate::log_target(meta.name()),
                 "Service {} got error on request {}: {:?}",
                 meta.name(),
                 id,

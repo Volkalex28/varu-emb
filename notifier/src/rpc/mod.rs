@@ -114,9 +114,9 @@ impl<R: traits::Rpc> core::fmt::Debug for Request<R>
 where
     R::Service: traits::RpcProvider<R::Notifier>,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Request")
-            .field("src", &self.src.to_string())
+            .field("src", &format_args!("{}", self.src))
             .field("data", &self.data)
             .finish()
     }
@@ -156,7 +156,7 @@ impl<R: traits::Rpc> core::fmt::Debug for Response<R>
 where
     R::Service: traits::RpcProvider<R::Notifier>,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Response")
             .field("id", &self.id)
             .field("data", &self.data)

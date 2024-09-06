@@ -1,9 +1,9 @@
+use crate::proc_meta_parser::Parser;
 use heck::ToUpperCamelCase;
 use linked_hash_map::LinkedHashMap;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
 use syn::{spanned::Spanned, Attribute, Error, Expr, ItemImpl, LitBool, Meta, PatType, Type};
-use varuemb_utils::proc_meta_parser::Parser;
 
 #[derive(Debug, Default)]
 struct Data {

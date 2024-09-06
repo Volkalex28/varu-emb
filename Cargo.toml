@@ -1,33 +1,40 @@
 [package]
 name = "varuemb"
-version = "0.2.0"
-edition = "2021"
-rust-version = "1.77"
-authors = ["Volkalex28 <anan20000228@gmail.com>"]
+
+categories  = ["asynchronous", "data-structures", "embedded"]
 description = """Toolchain for easy creation of asynchronous embedded applications on rust-lang"""
-license = "MIT"
-homepage = "https://github.com/Volkalex28/varu-emb#readme"
-repository = "https://github.com/Volkalex28/varu-emb"
-readme = "README.md"
-categories = ["asynchronous", "data-structures", "embedded"]
-keywords = ["channels", "embassy", "async", "notification", "rpc"]
-include = [
-    "/src",
-    "/utils",
-    "/notifier",
-    "/README.md",
-    "/LICENSE",
-]
+include     = ["/src", "/executor", "/lockfree", "/utils", "/notifier", "/README.md", "/LICENSE"]
+keywords    = ["channels", "embassy", "async", "notification", "rpc"]
+readme      = "README.md"
 
-# [dependencies.varuemb-utils]
-# path = "utils/"
+authors.workspace      = true
+edition.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+repository.workspace   = true
+rust-version.workspace = true
+version.workspace      = true
 
-# [dependencies.varuemb-notifier]
-# path = "notifier/"
-
-[dependencies]
-varuemb-notifier = { path = "notifier" }
-varuemb-utils    = { path = "utils" }
+[workspace.package]
+authors      = ["Volkalex28 <anan20000228@gmail.com>"]
+edition      = "2021"
+homepage     = "https://github.com/Volkalex28/varu-emb#readme"
+license      = "MIT"
+repository   = "https://github.com/Volkalex28/varu-emb"
+rust-version = "1.77"
+version      = "0.3.0"
 
 [workspace]
-members = ["utils", "notifier"]
+members = ["cross", "executor", "lockfree", "notifier", "utils", "build"]
+
+[features]
+default = ["cross", "devices", "executor", "utils"]
+std     = ["cross/std", "executor/std"]
+
+[dependencies]
+cross    = { path = "cross", package = "varuemb-cross", optional = true }
+devices  = { path = "devices", package = "varuemb-devices", optional = true }
+executor = { path = "executor", package = "varuemb-executor", optional = true }
+lockfree = { path = "lockfree", package = "varuemb-lockfree", optional = true }
+notifier = { path = "notifier", package = "varuemb-notifier", optional = true }
+utils    = { path = "utils", package = "varuemb-utils", optional = true }

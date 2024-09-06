@@ -1,7 +1,7 @@
+use crate::proc_meta_parser::Parser;
 use proc_macro2::Ident;
 use quote::{quote, ToTokens};
 use syn::{spanned::Spanned, DeriveInput, Error, Path};
-use varuemb_utils::proc_meta_parser::Parser;
 
 pub struct Event<'a> {
     meta: &'a super::Meta,
@@ -23,7 +23,10 @@ impl<'a> Event<'a> {
             }
         });
         let Some((attr, is_mixer)) = attrs.next() else {
-            return Err(Error::new(input.span(), "Attribute \"notifier_event\" or \"notifier_mixer\" not found"));
+            return Err(Error::new(
+                input.span(),
+                "Attribute \"notifier_event\" or \"notifier_mixer\" not found",
+            ));
         };
         if let Some((attr, _)) = attrs.next() {
             return Err(Error::new(

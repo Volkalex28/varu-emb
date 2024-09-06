@@ -1,7 +1,7 @@
+use crate::proc_meta_parser::Parser;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{spanned::Spanned, Attribute, Error, Expr, Ident, ItemImpl, LitBool, Path, Type};
-use varuemb_utils::proc_meta_parser::Parser;
 
 pub mod parse;
 

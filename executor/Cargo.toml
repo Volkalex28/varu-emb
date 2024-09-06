@@ -1,0 +1,26 @@
+[package]
+name = "varuemb-executor"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+rust-version = "1.77"
+authors = ["Volkalex28 <anan20000228@gmail.com>"]
+description = """Lock Free data structures"""
+license = "MIT"
+homepage = "https://github.com/Volkalex28/varu-emb/tree/main/#readme"
+repository = "https://github.com/Volkalex28/varu-emb"
+readme = "README.md"
+categories = ["asynchronous"]
+keywords = ["executor", "futures", "asynchronous"]
+include = [
+    "/src",
+]
+
+[features]
+std = ["thiserror-no-std/std"]
+
+[dependencies]
+proc             = { path = "proc", package = "varuemb-executor-proc" }
+proc-bitfield    = { version = "0.3" }
+thiserror-no-std = { version = "2.0.2" }
+varuemb-lockfree = { path = "../lockfree" }

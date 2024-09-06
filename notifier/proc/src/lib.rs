@@ -11,6 +11,7 @@ mod event;
 mod notifier;
 mod rpc;
 mod service;
+mod proc_meta_parser;
 
 #[derive(Debug)]
 struct Meta {

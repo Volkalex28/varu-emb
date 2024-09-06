@@ -1,0 +1,9 @@
+edition = "2021"
+max_width = 125
+chain_width = 100
+use_field_init_shorthand = true
+enum_discrim_align_threshold = 80
+overflow_delimited_expr = true
+use_small_heuristics = "Max"
+
+imports_granularity = "Module"

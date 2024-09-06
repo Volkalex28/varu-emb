@@ -1,0 +1,22 @@
+[package]
+name = "varuemb-devices"
+
+authors.workspace      = true
+edition.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+repository.workspace   = true
+rust-version.workspace = true
+version.workspace      = true
+
+[dependencies]
+embassy-time       = { version = "0.3.0" }
+embedded-hal       = { version = "1.0.0" }
+embedded-hal-async = { version = "1.0.0" }
+endian_trait       = { git = "https://gitlab.com/crates_forks/endian_trait.git", branch = "no_std" }
+log                = { version = "*" }
+proc               = { path = "proc", package = "varuemb-devices-proc" }
+utils              = { path = "../utils", package = "varuemb-utils" }
+
+[dev-dependencies]
+proc-bitfield = { version = "0.3.1" }

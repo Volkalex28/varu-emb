@@ -67,7 +67,7 @@ impl PartialEq for Metadata {
 }
 
 impl core::fmt::Display for Metadata {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self.index.as_ref() {
             None => write!(f, "{}", self.name),
             Some(index) => write!(f, "{}[{index}]", self.name),
@@ -77,7 +77,7 @@ impl core::fmt::Display for Metadata {
 
 impl core::fmt::Debug for Metadata {
     #[inline(always)]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Display::fmt(self, f)
     }
 }

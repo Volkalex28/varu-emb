@@ -4,7 +4,7 @@ use crate::{
     traits::*,
 };
 use core::{future::pending, marker::PhantomData};
-use std::mem::ManuallyDrop;
+use core::mem::ManuallyDrop;
 
 pub trait Mixer<N: Notifier>: core::fmt::Debug {}
 

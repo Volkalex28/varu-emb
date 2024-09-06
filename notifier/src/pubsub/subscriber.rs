@@ -1,13 +1,13 @@
 use super::{__evt, event, mixer, traits};
 use core::future::pending;
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering::*};
 use embassy_sync::{blocking_mutex::raw, channel};
-use std::sync::Mutex;
 
 type RawMutex = raw::CriticalSectionRawMutex;
 
 pub struct State {
-    pub(crate) receivers: usize,
-    pub(crate) sending: bool,
+    pub(crate) receivers: AtomicUsize,
+    pub(crate) sending: AtomicBool,
 }
 
 pub struct Subscription<P, E, const C: usize>
@@ -16,7 +16,7 @@ where
     E: __evt::Event<P::Notifier>,
 {
     inner: channel::Channel<RawMutex, event::Event<P::Notifier, E>, C>,
-    state: Mutex<State>,
+    state: State,
 }
 
 impl<P, E, const C: usize> Subscription<P, E, C>
@@ -38,10 +38,10 @@ where
     pub(crate) const fn new() -> Self {
         Self {
             inner: channel::Channel::new(),
-            state: Mutex::new(State {
-                receivers: 0,
-                sending: false,
-            }),
+            state: State {
+                receivers: AtomicUsize::new(0),
+                sending: AtomicBool::new(false),
+            },
         }
     }
 
@@ -66,7 +66,7 @@ where
 pub trait DynSubscription<E: 'static> {
     fn sender(&'static self) -> channel::DynamicSender<'static, E>;
     fn receiver(&'static self) -> channel::DynamicReceiver<'static, E>;
-    fn state(&'static self) -> &'static Mutex<State>;
+    fn state(&'static self) -> &'static State;
     fn clear(&'static self) {
         while self.receiver().try_receive().is_ok() {}
     }
@@ -85,7 +85,7 @@ where
         self.inner.receiver().into()
     }
 
-    fn state(&'static self) -> &'static Mutex<State> {
+    fn state(&'static self) -> &'static State {
         &self.state
     }
 }
@@ -105,7 +105,7 @@ where
     N: crate::traits::Notifier,
 {
     pub(crate) fn new(channel: &'static dyn DynSubscription<event::Event<N, E>>) -> Self {
-        channel.state().lock().unwrap().receivers += 1;
+        channel.state().receivers.fetch_add(1, AcqRel);
         Self {
             channel,
             state: true,
@@ -141,7 +141,7 @@ where
     pub fn set_state(&mut self, state: bool) {
         if state != self.state {
             if state {
-                self.channel.state().lock().unwrap().receivers += 1;
+                self.channel.state().receivers.fetch_add(1, AcqRel);
             } else {
                 self.__drop()
             }
@@ -154,9 +154,8 @@ where
     }
 
     fn __drop(&mut self) {
-        let mut state = self.channel.state().lock().unwrap();
-        state.receivers -= 1;
-        if state.receivers == 0 {
+        let state = self.channel.state();
+        if state.receivers.fetch_sub(1, AcqRel) == 1 {
             self.clear()
         }
     }

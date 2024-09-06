@@ -59,7 +59,7 @@ where
             },
         }
     }
-    
+
     pub const fn add<S>(mut self) -> CalcID<N, E>
     where
         [(); S::COUNT]:,

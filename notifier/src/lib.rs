@@ -1,5 +1,11 @@
+#![no_std]
+//
+#![allow(async_fn_in_trait)]
+#![allow(incomplete_features)]
+#![allow(type_alias_bounds)]
+//
 #![feature(const_trait_impl)]
-#![feature(associated_type_bounds)]
+#![cfg_attr(not(version("1.79")), feature(associated_type_bounds))]
 #![feature(generic_const_exprs)]
 #![feature(const_closures)]
 #![feature(specialization)]
@@ -7,13 +13,8 @@
 #![feature(const_type_id)]
 #![feature(macro_metavar_expr)]
 #![feature(const_refs_to_cell)]
-#![allow(incomplete_features)]
-#![allow(type_alias_bounds)]
 #![feature(cfg_version)]
-
-#![allow(async_fn_in_trait)]
 #![feature(effects)]
-
 #![feature(maybe_uninit_uninit_array)]
 #![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_mut_refs)]
@@ -24,7 +25,7 @@
 use traits::pubsub::Subscriber as _;
 
 pub use metadata::Metadata;
-pub use varuemb_notifier_proc::*;
+pub use proc::*;
 pub use varuemb_utils::{const_wrapper, select};
 
 pub mod calc;
@@ -44,8 +45,8 @@ mod assert {
     pub struct AssertStr<const STR: &'static str> {}
     impl True for AssertStr<""> {}
 
-    pub struct AssertNoop<const EXPR: bool>;
-    impl<const EXPR: bool> True for AssertNoop<EXPR> {}
+    // pub struct AssertNoop<const EXPR: bool>;
+    // impl<const EXPR: bool> True for AssertNoop<EXPR> {}
 }
 
 #[rustfmt::skip]
@@ -81,14 +82,14 @@ where
         if #[cfg(version("1.72"))] {
             E::Publisher::PROTECTED
             && unsafe {
-                std::mem::transmute::<_, u128>(TypeId::of::<P>())
-                    != std::mem::transmute::<_, u128>(TypeId::of::<E::Publisher>())
+                core::mem::transmute::<_, u128>(TypeId::of::<P>())
+                    != core::mem::transmute::<_, u128>(TypeId::of::<E::Publisher>())
             }
         } else {
         E::Publisher::PROTECTED
             && unsafe {
-                std::mem::transmute::<_, u64>(TypeId::of::<P>())
-                    != std::mem::transmute::<_, u64>(TypeId::of::<E::Publisher>())
+                core::mem::transmute::<_, u64>(TypeId::of::<P>())
+                    != core::mem::transmute::<_, u64>(TypeId::of::<E::Publisher>())
             }
         }
     }
@@ -183,4 +184,8 @@ where
         }
         item
     })
+}
+
+fn log_target(name: &'static str) -> heapless::String<32> {
+    heapless::String::from_iter("Pub<".chars().chain(name.chars()).chain(">".chars()))
 }

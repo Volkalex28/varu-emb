@@ -1,33 +1,32 @@
 [package]
 name = "varuemb-notifier"
-version = "0.2.0"
-edition = "2021"
-rust-version = "1.77"
-authors = ["Volkalex28 <anan20000228@gmail.com>"]
+
+categories = ["asynchronous", "data-structures", "embedded"]
 description = """
     varuemb-notifier allows to create and configure synchronous and asynchronous pub-sub interface
     and asynchronous rpc interface for services in embedded applications
 """
-license = "MIT"
-homepage = "https://github.com/Volkalex28/varu-emb/tree/main/notifier#readme"
-repository = "https://github.com/Volkalex28/varu-emb"
-readme = "README.md"
-categories = ["asynchronous", "data-structures", "embedded"]
+include = ["/src", "/proc", "/README.md"]
 keywords = ["channels", "embassy", "async", "notification", "rpc"]
-include = [
-    "/src",
-    "/proc",
-    "/README.md",
-]
+readme = "README.md"
 
+authors.workspace      = true
+edition.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+repository.workspace   = true
+rust-version.workspace = true
+version.workspace      = true
 
 [dependencies]
-anyhow = "1.0.75"
 cfg-if = "1.0.0"
 embassy-sync = { version = "0.6.0" }
-embassy-time = { version = "0.3.0"}
-futures-util = "0.3.30"
+embassy-time = { version = "0.3.0" }
+futures-util = { version = "0.3.30", default-features = false, features = [
+    "async-await",
+    "async-await-macro",
+] }
 heapless = "0.8.0"
 log = "0.4.21"
-varuemb-notifier-proc = { path = "proc" }
+proc = { path = "proc", package = "varuemb-notifier-proc" }
 varuemb-utils = { path = "../utils" }

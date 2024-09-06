@@ -10,7 +10,7 @@ pub struct Event<N, E> {
 unsafe impl<N, E: Send> Send for Event<N, E> {}
 
 impl<N, E: core::fmt::Debug> core::fmt::Debug for Event<N, E> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Event").field("data", &self.data).finish()
     }
 }
@@ -55,7 +55,7 @@ impl<N: crate::traits::Notifier, E> Event<N, E> {
     where
         E: traits::Event<N>,
     {
-        let target = self.meta.log_target();
+        let target = crate::log_target(self.meta.src.name());
         log::info!(
             target: &target,
             "Publishing<id: {}>: {:?}",
@@ -65,7 +65,7 @@ impl<N: crate::traits::Notifier, E> Event<N, E> {
     }
 
     pub(crate) fn print_publish(&self) {
-        let target = self.meta.log_target();
+        let target = crate::log_target(self.meta.src.name());
         log::debug!(
             target: &target,
             "<id: {}> to {}",
@@ -78,7 +78,7 @@ impl<N: crate::traits::Notifier, E> Event<N, E> {
     where
         E: traits::Event<N>,
     {
-        let target = self.meta.log_target();
+        let target = crate::log_target(self.meta.src.name());
         log::error!(
             target: &target,
             "Event {:?} with id {} doesn't sent to {}, cause it's full",
@@ -111,22 +111,18 @@ pub struct Metadata {
 }
 
 impl core::fmt::Debug for Metadata {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("EventMetadata")
             .field("event_id", &self.id)
-            .field("src", &format!("{}", self.src))
-            .field("dst", &format!("{}", self.dst))
+            .field("src", &format_args!("{}", self.src))
+            .field("dst", &format_args!("{}", self.dst))
             .finish()
     }
 }
 
 impl Metadata {
-    pub(crate) fn log_target(&self) -> String {
-        format!("Pub<{}>", self.src)
-    }
-
     pub(crate) fn print_publish_err_timeout(&self, timeout: Duration) {
-        let target = self.log_target();
+        let target = crate::log_target(self.src.name());
         log::error!(
             target: &target,
             "Event<{}> doesn't sent to {}, cause timeout {}",
@@ -137,7 +133,7 @@ impl Metadata {
     }
 
     pub(crate) fn print_publish_err_inactive(&self) {
-        let target = self.log_target();
+        let target = crate::log_target(self.src.name());
         log::error!(
             target: &target,
             "Event<{}> doesn't sent to {}, cause it's inactive",
@@ -147,7 +143,7 @@ impl Metadata {
     }
 
     // pub(crate) fn print_response_err(&self, id: usize) {
-    //     let target = self.log_target();
+    //     let target = crate::log_target(self.src.name());
     //     log::error!(
     //         target: &target,
     //         "Event<{}> doesn't sent to {}, cause it's inactive",

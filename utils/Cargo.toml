@@ -1,31 +1,26 @@
 [package]
 name = "varuemb-utils"
-version = "0.2.0"
-edition = "2021"
-resolver = "2"
-rust-version = "1.77"
-authors = ["Volkalex28 <anan20000228@gmail.com>"]
+
+categories  = ["embedded"]
 description = """Useful Embedded Utilities for Rust"""
-license = "MIT"
-homepage = "https://github.com/Volkalex28/varu-emb/tree/main/notifier#readme"
-repository = "https://github.com/Volkalex28/varu-emb"
-readme = "README.md"
-categories = ["embedded"]
-keywords = ["compile", "embassy", "proc", "execution"]
-include = [
-    "/src",
-    "/proc",
-]
+include     = ["/src", "/proc"]
+keywords    = ["compile", "embassy", "proc", "execution"]
+readme      = "README.md"
+
+authors.workspace      = true
+edition.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+repository.workspace   = true
+rust-version.workspace = true
+version.workspace      = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bytemuck = "1.14.0"
-const_format = "0.2.32"
-embassy-futures = "0.1.1"
-linked-hash-map = "0.5.6"
-syn = "2.0.39"
-paste = "1.0.14"
-proc-macro2 = "1.0.69"
-quote = "1.0.33"
-varuemb-utils-proc = { path = "proc" }
+bytemuck        = { version = "1.14.0" }
+const-assert    = { version = "1.0.1" }
+const_format    = { version = "0.2.32" }
+embassy-futures = { version = "0.1.1" }
+paste           = { version = "1.0.14" }
+# varuemb-utils-proc = { path = "proc" }

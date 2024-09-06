@@ -101,12 +101,12 @@ impl<N, E: core::fmt::Debug, RE: core::fmt::Debug> core::fmt::Debug for Error<N,
                 .finish(),
             Error::IncorrectResponse(f0, f1) => f
                 .debug_struct("IncorrectResponse")
-                .field("Meta", &f0.to_string())
+                .field("Meta", &format_args!("{}", f0))
                 .field("Id", &f1)
                 .finish(),
             Error::Response(f0, f1, err) => f
                 .debug_struct("Response")
-                .field("Meta", &f0.to_string())
+                .field("Meta", &format_args!("{}", f0))
                 .field("Id", &f1)
                 .field("Error", &err)
                 .finish(),
@@ -130,7 +130,7 @@ where
     }
 }
 
-impl<P: traits::PubSub + std::marker::Destruct, const C: usize> Container<P, C> {
+impl<P: traits::PubSub + core::marker::Destruct, const C: usize> Container<P, C> {
     pub fn metadata_service(&self) -> &'static Metadata
     where
         P: traits::CanMetadata,
@@ -148,7 +148,7 @@ impl<P: traits::PubSub, const C: usize> Container<P, C> {
                     item.init(PubSub::new(i))
                 }
                 init.finish()
-            }
+            },
         }
     }
 }
@@ -326,7 +326,9 @@ where
                 PublishSelector::Filter(filter) if !filter.clone().all(|target| meta != target) => {
                     TargetState::Filtered
                 }
-                _ if !allow_inactive && state.receivers == 0 => TargetState::Inactive,
+                _ if !allow_inactive && state.receivers.load(Ordering::Acquire) == 0 => {
+                    TargetState::Inactive
+                }
                 _ => TargetState::Ok,
             }
         };
@@ -525,7 +527,7 @@ where
     let mut data = PublishData::new(event_id, P::Notifier::CHANNEL_COUNT);
     let subscribers = crate::subscribers().map(|item| {
         let meta = item.meta();
-        let mut state = item.subscriber.state().lock().unwrap();
+        let state = item.subscriber.state();
         match (config.checker)(&state, meta) {
             TargetState::Inactive if config.inactive_is_err => {
                 data.errors += 1;
@@ -538,7 +540,7 @@ where
             }
             TargetState::Ok => (),
         }
-        state.sending = true;
+        state.sending.store(true, Ordering::Release);
 
         event.meta.dst = meta;
         let event = event.clone();
@@ -568,10 +570,7 @@ where
     let mut error = false;
     match res {
         Ok(_) => {
-            let is_ok = !matches!(
-                (config.checker)(&subscriber.state().lock().unwrap(), meta),
-                TargetState::Ok
-            );
+            let is_ok = !matches!((config.checker)(subscriber.state(), meta), TargetState::Ok);
             if is_ok {
                 subscriber.clear();
                 if config.inactive_is_err {
@@ -591,7 +590,7 @@ where
             (config.error_handler)(err)
         }
     }
-    subscriber.state().lock().unwrap().sending = false;
+    subscriber.state().sending.store(false, Ordering::Release);
 
     if error && config.break_after_error {
         return true;

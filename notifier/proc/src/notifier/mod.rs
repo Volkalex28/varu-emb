@@ -1,8 +1,8 @@
+use crate::proc_meta_parser::Parser;
 use heck::ToUpperCamelCase;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{spanned::Spanned, Error, ItemStruct};
-use varuemb_utils::proc_meta_parser::Parser;
 
 pub struct Notifier<'a> {
     meta: &'a super::Meta,
