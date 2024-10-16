@@ -22,7 +22,7 @@ homepage     = "https://github.com/Volkalex28/varu-emb#readme"
 license      = "MIT"
 repository   = "https://github.com/Volkalex28/varu-emb"
 rust-version = "1.77"
-version      = "0.3.0"
+version      = "0.3.1"
 
 [workspace]
 members = ["cross", "executor", "lockfree", "notifier", "utils", "build"]

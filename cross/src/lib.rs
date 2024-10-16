@@ -20,6 +20,14 @@ pub trait ErrorType {
     type Error: Error;
 }
 
+impl<T: ErrorType + ?Sized> ErrorType for &T {
+    type Error = T::Error;
+}
+
+impl<T: ErrorType + ?Sized> ErrorType for &mut T {
+    type Error = T::Error;
+}
+
 pub trait Marker {}
 
 pub trait Interface<P> {
