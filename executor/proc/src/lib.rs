@@ -226,7 +226,7 @@ pub fn implementation(input: proc_macro::TokenStream) -> proc_macro::TokenStream
             #[allow(unused)]
             macro_rules! #log {
                 ($level:expr, $($tokens:tt)+) => {
-                    ::log::log!($level, target: #name, $($tokens)+)
+                    ::log::log!(target: #name, $level, $($tokens)+)
                 };
             }
 
