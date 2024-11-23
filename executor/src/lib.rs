@@ -1,7 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(waker_getters)]
+#![cfg_attr(not(version("1.83")), feature(waker_getters))]
 #![feature(sync_unsafe_cell)]
 #![feature(debug_closure_helpers)]
+#![feature(cfg_version)]
 
 use self::application::Application as App;
 use core::future::Future;

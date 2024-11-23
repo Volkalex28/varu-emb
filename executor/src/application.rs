@@ -1,4 +1,5 @@
-use super::{task::Ref, Inner as Executor};
+use super::task::Ref;
+use super::Inner as Executor;
 use core::fmt;
 use varuemb_lockfree::luqueue::{Item, LUQueue};
 
@@ -50,9 +51,7 @@ pub struct Application {
 impl Application {
     #[inline]
     pub const fn new() -> Self {
-        Self {
-            threads: LUQueue::new(),
-        }
+        Self { threads: LUQueue::new() }
     }
 
     #[inline]
@@ -61,13 +60,13 @@ impl Application {
     }
 
     #[inline]
-    pub fn list(&'static self) -> impl Iterator<Item = &Thread> {
+    pub fn list(&'static self) -> impl Iterator<Item = &'static Thread> {
         self.threads.into_iter().map(|task| &**task)
     }
 
     #[inline]
     #[allow(unused)]
-    pub fn get(&'static self, name: &'static str) -> Option<&Thread> {
+    pub fn get(&'static self, name: &'static str) -> Option<&'static Thread> {
         self.list().find(|thread| thread.name == name)
     }
 }

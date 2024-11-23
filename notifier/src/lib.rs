@@ -10,17 +10,18 @@
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(adt_const_params)]
+#![cfg_attr(version("1.84"), feature(unsized_const_params))]
 #![feature(const_type_id)]
 #![feature(macro_metavar_expr)]
-#![feature(const_refs_to_cell)]
+#![cfg_attr(not(version("1.84")), feature(const_refs_to_cell))]
 #![feature(cfg_version)]
-#![feature(effects)]
+#![cfg_attr(not(version("1.84")), feature(effects))]
 #![feature(maybe_uninit_uninit_array)]
-#![feature(const_maybe_uninit_uninit_array)]
-#![feature(const_mut_refs)]
+#![cfg_attr(not(version("1.84")), feature(const_maybe_uninit_uninit_array))]
+#![cfg_attr(not(version("1.84")), feature(const_maybe_uninit_array_assume_init))]
+#![cfg_attr(not(version("1.84")), feature(const_mut_refs))]
 #![feature(const_maybe_uninit_write)]
 #![feature(maybe_uninit_array_assume_init)]
-#![feature(const_maybe_uninit_array_assume_init)]
 
 use traits::pubsub::Subscriber as _;
 
@@ -125,12 +126,7 @@ where
     [(); N::ID_COUNT]:,
     [(); N::COUNT_SERVICES]:,
 {
-    (
-        pubsub::traits::GetPubSub::__get(N::get().__get(), index)
-            .inner
-            .__get(),
-        count::<N, S>(),
-    )
+    (pubsub::traits::GetPubSub::__get(N::get().__get(), index).inner.__get(), count::<N, S>())
 }
 
 pub(crate) struct Subscriber<N, E>
@@ -173,11 +169,7 @@ where
         let checker = &N::ID_CALC.checkers[N::IDS[id]];
         let (subscriber, count) = (checker.checker)(index);
 
-        let item = Subscriber {
-            index,
-            subscriber,
-            meta: checker.meta,
-        };
+        let item = Subscriber { index, subscriber, meta: checker.meta };
         if index + 1 >= count {
             id += 1;
             offset += count;

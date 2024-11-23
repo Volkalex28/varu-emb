@@ -87,7 +87,7 @@ mod macros {
 
     macro_rules! implementation {
         ($($f:tt $($a:tt)+)?) => {
-            pub $($f)? fn address(&self) -> A {
+            pub fn address(&self) -> A {
                 self.address
             }
 

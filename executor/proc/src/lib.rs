@@ -186,7 +186,7 @@ pub fn implementation(input: proc_macro::TokenStream) -> proc_macro::TokenStream
             })
         })
         .unwrap_or(quote! {
-            panic!("Infinity {} task completed", #name)
+            panic!("Infinity task {} completed with: {:?}", #name, res)
         });
 
     let out = quote!(
@@ -198,10 +198,25 @@ pub fn implementation(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         #r#impl
 
         const _: () = {
+        pub trait _Internal {
+            type Task;
+            type Fut: ::core::future::Future<Output = Self::Output> + 'static;
+            type Output: ::core::fmt::Debug + 'static;
+            fn entry(this: Self::Task) -> Self::Fut;
+        }
+        impl _Internal for () {
+            type Task = #new_ident;
+            type Fut = impl ::core::future::Future<Output: ::core::fmt::Debug> + 'static;
+            type Output = <Self::Fut as ::core::future::Future>::Output;
+            #[inline]
+            fn entry(this: Self::Task) -> Self::Fut {
+                (#func)(this)
+            }
+        }
         impl ::varuemb::executor::Task for #new_ident {
-            type Fut = impl ::core::future::Future;
+            type Fut = <() as _Internal>::Fut;
 
-            fn process(self) -> Self::Fut { (#func)(self) }
+            fn process(self) -> Self::Fut { <() as _Internal>::entry(self) }
 
             fn finish(res: <Self::Fut as ::core::future::Future>::Output) { #body }
 

@@ -31,6 +31,19 @@ pub unsafe fn make_waker_isr(task: &'static Task) -> Waker {
 }
 
 #[allow(unused)]
+#[cfg(version("1.84"))]
+pub fn get_task(waker: &Waker) -> &'static Task {
+    let vtable = waker.vtable();
+
+    if vtable != &VTABLE && vtable != &ISR_VTABLE {
+        panic!("Unknown waker");
+    }
+
+    unsafe { Task::from_ptr(waker.data().cast()) }
+}
+
+#[allow(unused)]
+#[cfg(not(version("1.84")))]
 pub fn get_task(waker: &Waker) -> &'static Task {
     let raw = waker.as_raw();
 

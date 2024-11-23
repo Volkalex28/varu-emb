@@ -1,5 +1,6 @@
 #![feature(iterator_try_collect)]
-#![feature(option_get_or_insert_default)]
+#![feature(cfg_version)]
+#![cfg_attr(not(version("1.83")), feature(option_get_or_insert_default))]
 
 use proc_macro::TokenStream as TS;
 use proc_macro2::TokenStream;

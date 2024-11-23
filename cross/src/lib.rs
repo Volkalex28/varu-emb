@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // features
-#![feature(error_in_core)]
 #![feature(trait_alias)]
 
 use core::error::Error;
