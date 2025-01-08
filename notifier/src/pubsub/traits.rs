@@ -1,13 +1,10 @@
+use crate::event;
+use crate::pubsub::{__evt, mixer};
+use crate::service::traits as __svc;
+use crate::traits::*;
 use core::sync::atomic::Ordering;
-
-use crate::{
-    assert::*,
-    event,
-    pubsub::{__evt, mixer},
-    service::traits as __svc,
-    traits::*,
-};
 use embassy_time::Duration;
+use varuemb_utils::assert::*;
 
 #[const_trait]
 pub trait PubSub: Sized + 'static {
@@ -54,7 +51,7 @@ where
     N: NotifierServiceEvent<E>,
     E: __evt::Event<N> + IsPublisher<P>,
     P: PubSub<Notifier = N, Service: IsSubscribed<N, E>>,
-    Assert<{ crate::is_pubsub_impl::<P::Service, N, E>() }>: True,
+    Assert<{ crate::is_pubsub_impl::<P::Service, N, E>() }>: IsTrue,
 {
     type Notifier = N;
     fn channel(&'static self) -> GetSubscriberRet<N, E> {
@@ -84,7 +81,7 @@ impl<N, P> CanMetadata for P
 where
     N: NotifierService<P::Service>,
     P: PubSub<Notifier = N, Service: __svc::ServiceMetadata<N>>,
-    Assert<{ crate::metadata::check::<N, P::Service>() }>: True,
+    Assert<{ crate::metadata::check::<N, P::Service>() }>: IsTrue,
     [(); <P::Service as __svc::Service<N>>::COUNT]:,
 {
     fn metadata_service() -> &'static crate::Metadata {
@@ -135,17 +132,11 @@ mod private {
     pub trait CanPublishRaw<E: __evt::Event<Self::Notifier>> {
         type Notifier: Notifier;
 
-        fn __raw_publish<Ch, Eh, ER>(
-            &self,
-            config: root::PublishConfig<Self::Notifier, E, Ch, Eh, ER>,
-        ) -> root::PublishData
+        fn __raw_publish<Ch, Eh, ER>(&self, config: root::PublishConfig<Self::Notifier, E, Ch, Eh, ER>) -> root::PublishData
         where
             E: __evt::Event<Self::Notifier>,
             Eh: FnMut(root::Error<Self::Notifier, E, ER>),
-            Ch: for<'s> Fn(
-                &'s root::subscriber::State,
-                &'static root::Metadata,
-            ) -> root::TargetState;
+            Ch: for<'s> Fn(&'s root::subscriber::State, &'static root::Metadata) -> root::TargetState;
         async fn __raw_publish_async<Ch, Eh, ER>(
             &self,
             config: root::PublishConfig<Self::Notifier, E, Ch, Eh, ER>,
@@ -153,10 +144,7 @@ mod private {
         where
             E: __evt::Event<Self::Notifier>,
             Eh: FnMut(root::Error<Self::Notifier, E, ER>),
-            Ch: for<'s> Fn(
-                &'s root::subscriber::State,
-                &'static root::Metadata,
-            ) -> root::TargetState;
+            Ch: for<'s> Fn(&'s root::subscriber::State, &'static root::Metadata) -> root::TargetState;
     }
 }
 

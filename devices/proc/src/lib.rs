@@ -1,4 +1,5 @@
 #![feature(cfg_version)]
+#![feature(vec_pop_if)]
 #![feature(iterator_try_collect)]
 #![cfg_attr(not(version("1.80")), feature(lazy_cell))]
 #![cfg_attr(not(version("1.79")), feature(associated_type_bounds))]
@@ -17,7 +18,7 @@ fn implementation<D: ToTokens>(f: impl FnOnce() -> Result<D>) -> TokenStream {
     out.into()
 }
 
-#[proc_macro_derive(Register, attributes(register))]
+#[proc_macro_derive(Register, attributes(varuemb_devices))]
 pub fn i2c(input: TokenStream) -> TokenStream {
     implementation::<register::Register>(|| parse(input))
 }

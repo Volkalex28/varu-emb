@@ -1,77 +1,75 @@
 #[macro_export]
 macro_rules! select {
-    {
-        $ident0:ident = $fut0:expr => $handler0:block
-        $ident1:ident = $fut1:expr => $handler1:block
-    } => {
-        match $crate::__private::embassy_futures::select::select($fut0, $fut1).await {
-            $crate::__private::embassy_futures::select::Either::First(mut $ident0) => { $handler0 }
-            $crate::__private::embassy_futures::select::Either::Second(mut $ident1) => { $handler1 }
-        }
+    {$($(#[cfg($cond:meta)])? $ident:tt = $fut:expr => $handler:block)+} => {
+        $crate::select!{ impl unwrap_cfg {}; $( $(#[cfg($cond)])? $ident = $fut => $handler )+ }
     };
-    {
-        $ident0:ident = $fut0:expr => $handler0:block
-        $ident1:ident = $fut1:expr => $handler1:block
-        $ident2:ident = $fut2:expr => $handler2:block
-    } => {
-        match $crate::__private::embassy_futures::select::select3($fut0, $fut1, $fut2).await {
-            $crate::__private::embassy_futures::select::Either3::First(mut $ident0) => { $handler0 }
-            $crate::__private::embassy_futures::select::Either3::Second(mut $ident1) => { $handler1 }
-            $crate::__private::embassy_futures::select::Either3::Third(mut $ident2) => { $handler2 }
-        }
+
+    {impl unwrap_cfg { $($prev:tt)* }; #[cfg($cond:meta)] $ident:tt = $fut:expr => $handler:block $($rest:tt)*} => {
+        $crate::select!{ impl unwrap_cfg { $($prev)* #[cfg($cond)] $ident = $fut => $handler }; $($rest)* }
     };
-    {
-        $ident0:ident = $fut0:expr => $handler0:block
-        $ident1:ident = $fut1:expr => $handler1:block
-        $ident2:ident = $fut2:expr => $handler2:block
-        $ident3:ident = $fut3:expr => $handler3:block
-    } => {
-        match $crate::__private::embassy_futures::select::select4($fut0, $fut1, $fut2, $fut3).await {
-            $crate::__private::embassy_futures::select::Either4::First(mut $ident0) => { $handler0 }
-            $crate::__private::embassy_futures::select::Either4::Second(mut $ident1) => { $handler1 }
-            $crate::__private::embassy_futures::select::Either4::Third(mut $ident2) => { $handler2 }
-            $crate::__private::embassy_futures::select::Either4::Fourth(mut $ident3) => { $handler3 }
-        }
+    {impl unwrap_cfg { $($prev:tt)* }; $ident:tt = $fut:expr => $handler:block $($rest:tt)* } => {
+        $crate::select!{ impl unwrap_cfg { $($prev)* #[cfg(not(any()))] $ident = $fut => $handler }; $($rest)* }
     };
-    {$($ident:ident = $fut:expr => $handler:block)+} => {
-        $crate::select!($(F as $ident = $fut => $handler)+; private)
+    {impl unwrap_cfg { $($prev:tt)* }; } => {
+        $crate::select!{ impl unwrap_ident {}; $($prev)* }
     };
-    {$($name:ident as $ident:ident = $fut:expr => $handler:block)+; private} => {{
+
+    {impl unwrap_ident { $($prev:tt)* }; #[cfg($cond:meta)] _ = $fut:expr => $handler:block $($rest:tt)*} => {
+        $crate::select!{ impl unwrap_ident { $($prev)* #[cfg($cond)] F as [] _ = $fut => $handler }; $($rest)* }
+    };
+    {impl unwrap_ident { $($prev:tt)* }; #[cfg($cond:meta)] $ident:ident = $fut:expr => $handler:block $($rest:tt)* } => {
+        $crate::select!{ impl unwrap_ident { $($prev)* #[cfg($cond)] F as [mut] $ident = $fut => $handler }; $($rest)* }
+    };
+    {impl unwrap_ident { $($prev:tt)* }; } => {
+        $crate::select!{ impl final;  $($prev)* }
+    };
+
+    {impl final; $(#[cfg($cond:meta)] $name:ident as [$($mut:tt)?] $ident:tt = $fut:expr => $handler:block)+ } => {{
         mod __select { $crate::__private::paste::paste! {
             #[derive(Debug, Clone)]
-            pub enum Either< $([< $name:camel:upper ${ index() } >] , )+ > {
-                $([< $name:camel ${ index() } >] ([< $name:camel:upper ${ index() } >]) , )+
+            pub enum Either< $(#[cfg($cond)] [< $name:camel:upper ${ index() } >] , )+ > {
+                $(#[cfg($cond)] [< $name:camel ${ index() } >] ([< $name:camel:upper ${ index() } >]) , )+
             }
 
             #[derive(Debug)]
-            pub struct Select< $([< $name:camel:upper ${ index() } >] , )+ > {
-                $([< $name:lower:snake _ ${ index() } >] : [< $name:camel:upper ${ index() } >] , )+
+            pub struct Select< $(#[cfg($cond)] [< $name:camel:upper ${ index() } >] , )+ > {
+                $(#[cfg($cond)] [< $name:lower:snake _ ${ index() } >] : [< $name:camel:upper ${ index() } >] , )+
             }
 
-            impl< $([< $name:camel:upper ${ index() } >] , )+ > Select< $([< $name:camel:upper ${ index() } >] ,)+ > {
+
+            #[$crate :: cfg_impl_block]
+            $(#[cfg_attr($cond , bound([< $name:camel:upper ${ index() } >]))])+
+            impl Select {
                 #[inline]
                 #[allow(clippy::too_many_arguments)]
-                pub fn new($([< $name:lower:snake _ ${ index() } >] : [< $name:camel:upper ${ index() } >] , )+) -> Self {
-                    Self { $([< $name:lower:snake _ ${ index() } >], )+ }
+                pub fn new($(#[cfg($cond)] [< $name:lower:snake _ ${ index() } >] : [< $name:camel:upper ${ index() } >] , )+) -> Self {
+                    Self { $(#[cfg($cond)] [< $name:lower:snake _ ${ index() } >], )+ }
                 }
             }
 
             use ::core::marker::Unpin;
-            impl< $([< $name:upper:camel ${ index() } >] : Unpin , )+ > Unpin for Select< $([< $name:upper:camel ${ index() } >] , )+ > {}
+            #[$crate :: cfg_impl_block]
+            $(#[cfg_attr($cond , bound([< $name:camel:upper ${ index() } >] : Unpin))])+
+            impl Unpin for Select {}
 
             use ::core::future::Future;
             use ::core::pin::Pin;
             use ::core::task::{Context, Poll};
-            impl< $([< $name:camel:upper ${ index() } >] , )+ > Future for Select< $([< $name:camel:upper ${ index() } >] , )+ >
-            where
-                $([< $name:camel:upper ${ index() } >] : Future , )+
-            {
-                type Output = Either< $([< $name:camel:upper ${ index() } >] ::Output, )+ >;
+
+            #[$crate :: cfg_impl_block]
+            $(#[cfg_attr($cond , bound([< $name:camel:upper ${ index() } >] : Future))])+
+            impl Future for Select {
+
+                #[$crate :: cfg_type_alias]
+                $(#[cfg_attr($cond , bound(= <[< $name:camel:upper ${ index() } >] as Future> :: Output))])+
+                type Output = Either;
 
                 fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
                     let this = unsafe { self.get_unchecked_mut() };
                     $(
+                        #[cfg($cond)]
                         let [< $name:snake:lower _ ${ index() } >] = unsafe { Pin::new_unchecked(&mut this. [< $name:snake:lower _ ${ index() } >] ) };
+                        #[cfg($cond)]
                         if let Poll::Ready(x) = [< $name:snake:lower _ ${ index() } >] .poll(cx) {
                             return Poll::Ready(Either:: [< $name:camel ${ index() } >] (x));
                         }
@@ -82,8 +80,12 @@ macro_rules! select {
         }}
 
         $crate::__private::paste::paste! {
-            match __select::Select::new($($fut,)+).await {
-                $(__select::Either:: [< $name:camel ${ index() } >] (mut $ident) => { $handler } )+
+            match __select::Select::new($(#[cfg($cond)] $fut,)+).await {
+                $(
+                    #[cfg($cond)]
+                    #[allow(unused_mut)]
+                    __select::Either:: [< $name:camel ${ index() } >] ($($mut)? $ident) => { $handler }
+                )+
             }
         }
     }};

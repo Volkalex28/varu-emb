@@ -1,4 +1,6 @@
-use crate::{event::traits as __evt, pubsub as __pub, service::traits as __svc};
+use crate::event::traits as __evt;
+use crate::pubsub as __pub;
+use crate::service::traits as __svc;
 
 pub use __pub::traits as pubsub;
 

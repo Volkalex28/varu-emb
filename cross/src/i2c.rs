@@ -1,21 +1,34 @@
 pub use embedded_hal::i2c::*;
 
-pub use supply::I2c;
-pub use supply::I2cErrorType as ErrorType;
+pub use supply::{I2c, I2cErrorType as ErrorType};
 
-pub use supply::uncurry_trait_forwarding_info_for_I2c;
-pub use supply::uncurry_trait_forwarding_info_for_I2cErrorType as uncurry_trait_forwarding_info_for_ErrorType;
+pub use supply::{
+    uncurry_trait_forwarding_info_for_I2c,
+    uncurry_trait_forwarding_info_for_I2cErrorType as uncurry_trait_forwarding_info_for_ErrorType,
+};
 
 pub mod asynch {
     pub use super::*;
 
-    pub use supply::uncurry_trait_forwarding_info_for_AsyncI2c as uncurry_trait_forwarding_info_for_I2c;
-    pub use supply::AsyncI2c as I2c;
+    pub use supply::{uncurry_trait_forwarding_info_for_AsyncI2c as uncurry_trait_forwarding_info_for_I2c, AsyncI2c as I2c};
+}
+
+/// I2c Configuration
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct Config {
+    pub frequency: fugit::HertzU32,
+    pub timeout: Option<u32>,
+}
+impl Default for Config {
+    fn default() -> Self {
+        use fugit::RateExtU32;
+
+        Self { frequency: 100.kHz(), timeout: Some(10) }
+    }
 }
 
 mod alias {
-    pub use embedded_hal::i2c::ErrorType as I2cErrorType;
-    pub use embedded_hal::i2c::I2c;
+    pub use embedded_hal::i2c::{ErrorType as I2cErrorType, I2c};
     pub use embedded_hal_async::i2c::I2c as AsyncI2c;
 }
 

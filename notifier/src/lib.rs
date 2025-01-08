@@ -10,12 +10,12 @@
 #![feature(const_closures)]
 #![feature(specialization)]
 #![feature(adt_const_params)]
-#![cfg_attr(version("1.84"), feature(unsized_const_params))]
+#![cfg_attr(version("1.82"), feature(unsized_const_params))]
 #![feature(const_type_id)]
 #![feature(macro_metavar_expr)]
 #![cfg_attr(not(version("1.84")), feature(const_refs_to_cell))]
 #![feature(cfg_version)]
-#![cfg_attr(not(version("1.84")), feature(effects))]
+// #![cfg_attr(not(version("1.84")), feature(effects))]
 #![feature(maybe_uninit_uninit_array)]
 #![cfg_attr(not(version("1.84")), feature(const_maybe_uninit_uninit_array))]
 #![cfg_attr(not(version("1.84")), feature(const_maybe_uninit_array_assume_init))]
@@ -36,19 +36,6 @@ pub mod pubsub;
 pub mod rpc;
 pub mod service;
 pub mod traits;
-
-mod assert {
-    pub trait True {}
-
-    pub struct Assert<const EXPR: bool>;
-    impl True for Assert<true> {}
-
-    pub struct AssertStr<const STR: &'static str> {}
-    impl True for AssertStr<""> {}
-
-    // pub struct AssertNoop<const EXPR: bool>;
-    // impl<const EXPR: bool> True for AssertNoop<EXPR> {}
-}
 
 #[rustfmt::skip]
 pub type GetPubSub<N, S: service::traits::Service<N>> = S::Impl;

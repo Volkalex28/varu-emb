@@ -25,11 +25,7 @@ impl<N: crate::traits::Notifier, E> Event<N, E> {
         let event_id = pubsub.incr_event_id();
         let event = Self {
             data,
-            meta: Metadata {
-                id: event_id,
-                src: pubsub.metadata(),
-                dst: pubsub.metadata(),
-            },
+            meta: Metadata { id: event_id, src: pubsub.metadata(), dst: pubsub.metadata() },
             _phantom: Default::default(),
         };
         (event, event_id)
@@ -44,11 +40,7 @@ impl<N: crate::traits::Notifier, E> Event<N, E> {
     }
 
     pub fn map<M>(self, mapper: impl FnOnce(E) -> M) -> Event<N, M> {
-        Event {
-            data: (mapper)(self.data),
-            meta: self.meta,
-            _phantom: Default::default(),
-        }
+        Event { data: (mapper)(self.data), meta: self.meta, _phantom: Default::default() }
     }
 
     pub(crate) fn print_pre_publish(&self)
@@ -95,11 +87,7 @@ where
     E: traits::Event<N>,
 {
     fn clone(&self) -> Self {
-        Self {
-            meta: self.meta,
-            data: self.data.clone(),
-            _phantom: Default::default(),
-        }
+        Self { meta: self.meta, data: self.data.clone(), _phantom: Default::default() }
     }
 }
 
@@ -154,7 +142,8 @@ impl Metadata {
 }
 
 pub mod traits {
-    use crate::{service::traits::Service, traits::Notifier};
+    use crate::service::traits::Service;
+    use crate::traits::Notifier;
     pub trait Event<N: Notifier>: core::fmt::Debug + Clone + 'static {
         type Service: Service<N>;
     }

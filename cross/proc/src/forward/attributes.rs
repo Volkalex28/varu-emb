@@ -34,6 +34,13 @@ pub enum Property<D: Parse = Nothing> {
 
 #[derive(Debug, Parse)]
 pub enum Interface {
+    #[parse(peek = tokens::gpio)]
+    Gpio {
+        #[allow(unused)]
+        token: tokens::gpio,
+        props: Parenthesized<Property<gpio::Part>>,
+    },
+
     #[parse(peek = tokens::i2c)]
     I2c {
         #[allow(unused)]
@@ -62,6 +69,26 @@ pub struct Member {
     #[allow(unused)]
     pub colon: token::Colon,
     pub interface: Interface,
+}
+
+pub mod gpio {
+    use super::*;
+
+    #[derive(Debug, Parse)]
+    pub enum Part {
+        #[parse(peek = tokens::input)]
+        Input(tokens::input),
+        #[parse(peek = tokens::output)]
+        Output(tokens::output),
+        #[parse(peek = tokens::stateful)]
+        Stateful(tokens::stateful),
+    }
+
+    mod tokens {
+        syn::custom_keyword!(input);
+        syn::custom_keyword!(output);
+        syn::custom_keyword!(stateful);
+    }
 }
 
 pub mod io {

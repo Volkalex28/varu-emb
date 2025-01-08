@@ -1,6 +1,7 @@
-use crate::{
-    event::traits as __evt, pubsub::traits as __pubsub, service::traits as __svc, traits::*,
-};
+use crate::event::traits as __evt;
+use crate::pubsub::traits as __pubsub;
+use crate::service::traits as __svc;
+use crate::traits::*;
 
 pub trait Rpc: __pubsub::PubSub
 where
@@ -12,10 +13,7 @@ where
 }
 
 impl<P: __pubsub::PubSub> Rpc for P where Self::Service: RpcProvider<Self::Notifier> {}
-impl<R: Rpc> __pubsub::Publisher<super::GetResponse<Self, R::Service>> for R where
-    Self::Service: RpcProvider<Self::Notifier>
-{
-}
+impl<R: Rpc> __pubsub::Publisher<super::GetResponse<Self, R::Service>> for R where Self::Service: RpcProvider<Self::Notifier> {}
 impl<R: Rpc> __pubsub::Publisher<super::GetRequest<Self, R::Service>> for R
 where
     Self::Service: RpcProvider<Self::Notifier>,
@@ -23,8 +21,7 @@ where
     const PROTECTED: bool = true;
 }
 
-pub type GetSubscriberRet<N, S> =
-    __pubsub::GetSubscriberRet<N, super::Response<<S as __svc::Service<N>>::Impl>>;
+pub type GetSubscriberRet<N, S> = __pubsub::GetSubscriberRet<N, super::Response<<S as __svc::Service<N>>::Impl>>;
 pub type GetRpc<R: Rpc> = <R::Service as RpcProvider<R::Notifier>>::Rpc;
 
 pub trait RpcProvider<N: Notifier>: __svc::Service<N, Impl: Rpc> {

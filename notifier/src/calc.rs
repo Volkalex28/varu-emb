@@ -1,4 +1,7 @@
-use crate::{event::traits as __evt, pubsub::traits as __pub, service::traits as __svc, traits};
+use crate::event::traits as __evt;
+use crate::pubsub::traits as __pub;
+use crate::service::traits as __svc;
+use crate::traits;
 
 pub(crate) struct CheckerID<N, E>
 where
@@ -18,10 +21,7 @@ where
         fn dummy<R>(_: usize) -> R {
             unreachable!()
         }
-        Self {
-            checker: dummy,
-            meta: &[],
-        }
+        Self { checker: dummy, meta: &[] }
     }
 }
 
@@ -64,17 +64,14 @@ where
     where
         [(); S::COUNT]:,
         N: traits::NotifierService<S> + traits::NotifierPublisher<E>,
-        S: ~const __svc::ServiceMetadata<N> + 'static,
-        crate::assert::Assert<{ crate::metadata::check::<N, S>() }>: crate::assert::True,
+        S: __svc::ServiceMetadata<N> + 'static,
+        varuemb_utils::assert::Assert<{ crate::metadata::check::<N, S>() }>: varuemb_utils::assert::IsTrue,
     {
         if crate::is_pubsub_impl::<S, N, E>() {
             self.arr[self.index] = crate::id::<_, S>();
             self.index += 1;
         }
-        self.checkers[self.checkers_index] = CheckerID {
-            checker: crate::subscriber_checker::<S, N, E> as _,
-            meta: S::META,
-        };
+        self.checkers[self.checkers_index] = CheckerID { checker: crate::subscriber_checker::<S, N, E> as _, meta: S::META };
         self.checkers_index += 1;
         self
     }

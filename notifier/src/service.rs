@@ -1,8 +1,6 @@
-use crate::{
-    pubsub::{self, traits as __pub},
-    rpc::{self, traits as __rpc},
-    traits as __traits,
-};
+use crate::pubsub::{self, traits as __pub};
+use crate::rpc::{self, traits as __rpc};
+use crate::traits as __traits;
 
 pub struct Service<N, S>
 where
@@ -27,9 +25,7 @@ where
     [(); S::COUNT]:,
 {
     pub const fn default() -> Self {
-        Self {
-            pubsub: pubsub::Container::<S::Impl, { S::COUNT }>::new(),
-        }
+        Self { pubsub: pubsub::Container::<S::Impl, { S::COUNT }>::new() }
     }
 }
 
@@ -74,12 +70,10 @@ where
 }
 
 pub mod traits {
-    use crate::{
-        assert::*,
-        pubsub::{self, traits as __pub},
-        rpc::{self, traits as __rpc},
-        traits as __traits,
-    };
+    use crate::pubsub::{self, traits as __pub};
+    use crate::rpc::{self, traits as __rpc};
+    use crate::traits as __traits;
+    use varuemb_utils::assert::*;
 
     pub trait Service<N: __traits::Notifier>: Sized {
         const COUNT: usize;
@@ -93,9 +87,7 @@ pub mod traits {
             N::get().__get().pubsub()
         }
 
-        async fn rpc_request(
-            subscriber: &mut pubsub::Subscriber<N, rpc::Request<Self::Impl>>,
-        ) -> rpc::RpcRequest<Self::Impl>
+        async fn rpc_request(subscriber: &mut pubsub::Subscriber<N, rpc::Request<Self::Impl>>) -> rpc::RpcRequest<Self::Impl>
         where
             [(); Self::COUNT]:,
             N: __traits::NotifierService<Self>,
@@ -110,7 +102,7 @@ pub mod traits {
     #[const_trait]
     pub trait ServiceMetadata<N: __traits::NotifierService<Self>>: Service<N>
     where
-        Assert<{ crate::metadata::check::<N, Self>() }>: True,
+        Assert<{ crate::metadata::check::<N, Self>() }>: IsTrue,
     {
         const META_SERVICE: crate::Metadata;
         const META: &'static [crate::Metadata];
@@ -121,7 +113,7 @@ pub mod traits {
         impl<S: Service<N>, N: __traits::NotifierService<S>> const ServiceMetadata<N> for S
         where
             [(); Self::COUNT]:,
-            Assert<{ check::<N, Self>() }>: True,
+            Assert<{ check::<N, Self>() }>: IsTrue,
         {
             const META_SERVICE: crate::Metadata = crate::Metadata::new_service::<N, Self>();
             const META: &'static [crate::Metadata] = &unsafe {

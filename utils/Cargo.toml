@@ -18,9 +18,9 @@ version.workspace      = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bytemuck        = { version = "1.14.0" }
-const-assert    = { version = "1.0.1" }
-const_format    = { version = "0.2.32" }
-embassy-futures = { version = "0.1.1" }
-paste           = { version = "1.0.14" }
-# varuemb-utils-proc = { path = "proc" }
+bytemuck           = { version = "1.14.0" }
+const-assert       = { version = "1.0.1" }
+const_format       = { version = "0.2.32" }
+embassy-futures    = { version = "0.1.1" }
+paste              = { version = "1.0.14" }
+varuemb-utils-proc = { path = "proc" }

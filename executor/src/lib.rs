@@ -4,17 +4,15 @@
 #![feature(debug_closure_helpers)]
 #![feature(cfg_version)]
 
-use self::application::Application as App;
+use self::statistic::Statistic;
 use core::future::Future;
 use core::marker::PhantomData;
-use core::sync::atomic::AtomicUsize;
-use core::sync::atomic::Ordering::*;
 use varuemb_lockfree::luqueue::{Item, LUQueue};
 
 pub use proc::*;
 
-pub mod application;
 pub mod spawner;
+pub mod statistic;
 pub mod task;
 
 pub trait TaskName: Sized + 'static {
@@ -25,19 +23,22 @@ pub trait TaskName: Sized + 'static {
 
 pub trait Task: TaskName {
     type Fut: Future + 'static;
+    // type Pool: PoolProvider<Self>;
 
-    fn process(self) -> Self::Fut;
-    fn finish(result: <Self::Fut as Future>::Output) {
+    fn __process(self) -> Self::Fut;
+    fn __finish(result: <Self::Fut as Future>::Output) {
         drop(result)
     }
 
-    fn pool() -> task::PoolRef<Self>;
+    // fn pool() -> task::PoolRef<Self>;
 }
 
 #[derive(thiserror_no_std::Error, Debug)]
 pub enum Error {
     #[error("Pool for task {0} is full")]
     PoolFull(&'static str),
+    #[error("{}", spawner::ForCurrentExecutorError)]
+    InvalidExecutor,
 }
 impl<T: Task> From<spawner::SpawnError<T>> for Error {
     fn from(value: spawner::SpawnError<T>) -> Self {
@@ -46,46 +47,29 @@ impl<T: Task> From<spawner::SpawnError<T>> for Error {
         }
     }
 }
-
-pub trait Pender {
-    /// - `bool`: A boolean value indicating whether the executor is still active.
-    ///   - `true`: The executor is still active and should continue running.
-    ///   - `false`: The executor is no longer active and should stop running.
-    fn wait(&mut self) -> bool;
-    fn notify(&self);
+impl From<spawner::ForCurrentExecutorError> for Error {
+    fn from(_: spawner::ForCurrentExecutorError) -> Self {
+        Self::InvalidExecutor
+    }
 }
 
-struct Inner {
+pub struct Inner {
     notify: fn(&'static Self),
     list: LUQueue<Item<task::Task>>,
     queue: LUQueue<task::Task>,
-    index: AtomicUsize,
 }
 
 impl Inner {
-    const fn new(notify: fn(&'static Self)) -> Self {
-        Self { notify, list: LUQueue::new(), queue: LUQueue::new(), index: AtomicUsize::new(0) }
+    pub const fn new(notify: fn(&'static Self)) -> Self {
+        Self { notify, list: LUQueue::new(), queue: LUQueue::new() }
     }
 
     #[inline]
-    fn spawner(&'static self) -> spawner::Spawner {
+    pub fn spawner(&'static self) -> spawner::Spawner<()> {
         spawner::Spawner::new(self)
     }
 
-    fn poll(&'static self) {
-        loop {
-            let list = self.list.into_iter();
-            let to_enqueue = list.filter_map(|task| {
-                let index = core::num::NonZeroUsize::new(task.index())?;
-                Some((index.get(), task))
-            });
-            if let Some((_, task)) = to_enqueue.min_by_key(|(index, _)| *index) {
-                self.enqueue(task::Ref::from_task(task));
-                continue;
-            }
-            break;
-        }
-
+    pub fn poll(&'static self) {
         let mut taker = self.queue.take();
         while let Some(task) = taker.next() {
             unsafe { task.poll() };
@@ -110,61 +94,84 @@ impl Inner {
     }
 
     #[inline]
-    fn enqueue(&'static self, task: task::Ref) -> bool {
-        let res = self.queue.push_back(task.0);
-        task.0.enqueued();
-        res.is_some_and(|is_first| is_first)
-    }
-
-    fn next_index(&self) -> usize {
-        let mut index = 0;
-        while index == 0 {
-            index = self.index.fetch_add(1, SeqCst)
+    fn enqueue(&'static self, task: task::Ref) {
+        if self.queue.push_back(task.0).is_some_and(|is_first| is_first) {
+            self.notify();
         }
-        index
     }
+}
+
+pub trait Pender {
+    /// - `bool`: A boolean value indicating whether the executor is still active.
+    ///   - `true`: The executor is still active and should continue running.
+    ///   - `false`: The executor is no longer active and should stop running.
+    fn wait(&mut self) -> bool;
+    fn notify(&self);
+}
+
+pub trait Execution: AsRef<Statistic> {
+    type Pender<'a>: Pender + 'a
+    where
+        Self: 'a;
+
+    fn make_pender<'a>(&'a self, name: &'static str) -> Self::Pender<'a>;
+}
+
+pub trait PoolProvider<T: Task> {
+    fn pool(&self) -> task::PoolRef<T>;
 }
 
 #[repr(C)]
-pub struct Executor<P: Pender> {
+pub struct Executor<'e, E: Execution> {
     inner: Inner,
-    pender: P,
     name: &'static str,
+    execution: &'e E,
+    pender: E::Pender<'e>,
     block_send: PhantomData<*const ()>,
 }
 
-impl<P: Pender> Executor<P> {
+impl<'e, E: Execution + 'static> Executor<'e, E> {
     #[inline]
-    pub fn new(name: &'static str, pender: P) -> Self {
-        Self { inner: Inner::new(Self::notify), pender, name, block_send: PhantomData }
+    pub fn new(name: &'static str, execution: &'e E) -> Self {
+        Self {
+            inner: Inner::new(Executor::<'static, E>::notify),
+            execution,
+            pender: execution.make_pender(name),
+            name,
+            block_send: PhantomData,
+        }
     }
 
     #[inline]
     pub fn name(&self) -> &'static str {
         self.name
     }
+}
 
-    pub fn run(mut self, app: Option<&'static App>, spawn: impl FnOnce(spawner::Spawner) -> Result<(), Error>) {
+impl<E: Execution> Executor<'static, E> {
+    pub fn run(mut self, spawn: impl FnOnce(spawner::Spawner<E>) -> Result<(), Error>) -> Result<(), Error> {
+        use statistic::Thread;
+
         let inner: &'static Inner = unsafe { core::mem::transmute(&self.inner) };
 
-        if let Err(err) = spawn(inner.spawner()) {
-            panic!("{err}")
-        }
+        spawn(inner.spawner().map(self.execution))?;
 
-        use application::Thread;
         let thread = Item::new(Thread { name: self.name, executor: inner });
-        if let Some(app) = app {
-            let thread: &'static Item<Thread> = unsafe { core::mem::transmute(&thread) };
-            app.new_thread(thread)
-        }
+        let thread = self.execution.as_ref().new_thread(unsafe { core::mem::transmute(&thread) });
 
         while self.pender.wait() {
             inner.poll();
         }
+
+        if let Some(thread) = thread {
+            self.execution.as_ref().delete_thread(thread);
+        }
+
+        Ok(())
     }
 
     fn notify(this: &'static Inner) {
-        let this = unsafe { &*(this as *const Inner as *const Self) };
+        let this = unsafe { &*(&raw const *this).cast::<Self>() };
         this.pender.notify();
     }
 }

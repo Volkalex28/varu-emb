@@ -12,6 +12,91 @@ mod attrs;
 use self::attrs::Members;
 
 #[derive(Debug, derive_builder::Builder)]
+struct GpioModes {
+    #[builder(default, setter(custom))]
+    input: bool,
+    #[builder(default, setter(custom))]
+    output: bool,
+    #[builder(default, setter(custom))]
+    stateful: bool,
+}
+
+#[derive(Debug, derive_builder::Builder)]
+struct GpioAsyncModes {
+    #[builder(default, setter(custom))]
+    input: bool,
+}
+
+#[derive(Debug, derive_builder::Builder)]
+#[builder(build_fn(error = "Box<dyn error::Error>"))]
+struct Gpio {
+    #[builder(setter(custom, strip_option))]
+    #[builder(field(ty = "Option<syn::Type>", build = "self.error.clone()"))]
+    error: Option<syn::Type>,
+
+    #[builder(setter(custom))]
+    #[builder(field(ty = "GpioAsyncModesBuilder", build = "self.asynch.build()?"))]
+    asynch: GpioAsyncModes,
+
+    #[builder(setter(custom))]
+    #[builder(field(ty = "GpioModesBuilder", build = "self.blocking.build()?"))]
+    blocking: GpioModes,
+}
+impl GpioBuilder {
+    fn set_properties(&mut self, property: impl IntoIterator<Item = attrs::Property<attrs::gpio::Part>>) -> Result<()> {
+        for property in property {
+            match property {
+                attrs::Property::Error { ty, token, .. } => set(&mut self.error, ty, token)?,
+                attrs::Property::Async { data: Some(data), .. } => Self::set_mode_async(&mut self.asynch, data)?,
+                attrs::Property::Blocking { data: Some(data), .. } => Self::set_mode(&mut self.blocking, data)?,
+                attrs::Property::Async { data: None, .. } | attrs::Property::Blocking { data: None, .. } => {}
+            }
+        }
+        Ok(())
+    }
+
+    fn set_mode_async(mode: &mut GpioAsyncModesBuilder, data: Parenthesized<attrs::gpio::Part>) -> Result<()> {
+        data.data.into_iter().try_for_each(|part| match part {
+            attrs::gpio::Part::Input(token) => set(&mut mode.input, true, token),
+            attrs::gpio::Part::Output(token) => Err(Error::new(token.span(), "Not allowed for async mode")),
+            attrs::gpio::Part::Stateful(token) => Err(Error::new(token.span(), "Not allowed for async mode")),
+        })
+    }
+
+    fn set_mode(mode: &mut GpioModesBuilder, data: Parenthesized<attrs::gpio::Part>) -> Result<()> {
+        data.data.into_iter().try_for_each(|part| match part {
+            attrs::gpio::Part::Input(token) => set(&mut mode.input, true, token),
+            attrs::gpio::Part::Output(token) => set(&mut mode.output, true, token),
+            attrs::gpio::Part::Stateful(token) => set(&mut mode.stateful, true, token),
+        })
+    }
+}
+impl Gpio {
+    fn to_tokens(&self, input: &syn::Ident, ident: &syn::Member, ty: &syn::Type, tokens: &mut TokenStream) {
+        let error = self.error.as_ref();
+        let transform = error.map(|err| quote! { [Self::Error |__e| { #err :: from(__e) } -> #err] });
+        let bounds = error.map(|err| {
+            quote! {
+                where #err: ::core::convert::From<<#ty as ::varuemb::cross::gpio::ErrorType>::Error>
+            }
+        });
+
+        let asynch_input = self.asynch.input.then(|| quote! { + ::varuemb::cross::gpio::asynch::InputPin });
+
+        let blocking_input = self.blocking.input.then(|| quote! { + ::varuemb::cross::gpio::InputPin });
+        let blocking_output = self.blocking.output.then(|| quote! { + ::varuemb::cross::gpio::OutputPin });
+        let blocking_stateful = self.blocking.stateful.then(|| quote! { + ::varuemb::cross::gpio::StatefulOutputPin });
+
+        tokens.extend(quote! {
+            ::forward_traits::forward_traits! {
+                for #input . #ident #transform #bounds
+                impl ::varuemb::cross::io::ErrorType #blocking_input #blocking_output #blocking_stateful #asynch_input
+            }
+        })
+    }
+}
+
+#[derive(Debug, derive_builder::Builder)]
 struct I2c {
     #[builder(setter(custom, strip_option))]
     #[builder(field(ty = "Option<syn::Type>", build = "self.error.clone()"))]
@@ -212,13 +297,15 @@ impl Spi {
 
 #[derive(Default)]
 struct Builders {
+    gpio: Option<GpioBuilder>,
     i2c: Option<I2cBuilder>,
-    spi: Option<SpiBuilder>,
     io: Option<IoBuilder>,
+    spi: Option<SpiBuilder>,
 }
 
 #[derive(Debug)]
 enum Interface {
+    Gpio(Gpio),
     I2c(I2c),
     Io(Io),
     Spi(Spi),
@@ -242,6 +329,7 @@ impl Member {
             for interface in interfaces {
                 use attrs::Interface::*;
                 match interface {
+                    Gpio { props, .. } => builders.gpio.get_or_insert_default().set_properties(props.data),
                     I2c { props, .. } => builders.i2c.get_or_insert_default().set_properties(props.data),
                     Io { props, .. } => builders.io.get_or_insert_default().set_properties(props.data),
                     Spi { props, .. } => builders.spi.get_or_insert_default().set_properties(props.data),
@@ -252,13 +340,18 @@ impl Member {
         let mut members = members.into_iter().map(|(member, builders)| -> result::Result<_, Box<dyn error::Error>> {
             let mut member = Member { ident: member, interfaces: Vec::new() };
 
-            if let Some(i2c) = builders.i2c {
+            let Builders { gpio, i2c, io, spi } = builders;
+
+            if let Some(gpio) = gpio {
+                member.interfaces.push(Interface::Gpio(gpio.build()?));
+            }
+            if let Some(i2c) = i2c {
                 member.interfaces.push(Interface::I2c(i2c.build()?));
             }
-            if let Some(io) = builders.io {
+            if let Some(io) = io {
                 member.interfaces.push(Interface::Io(io.build()?));
             }
-            if let Some(spi) = builders.spi {
+            if let Some(spi) = spi {
                 member.interfaces.push(Interface::Spi(spi.build()?));
             }
 
@@ -273,13 +366,34 @@ pub struct Forward {
     input: ItemStruct,
     members: Vec<Member>,
 }
-
+impl Forward {
+    fn extract_attrs(input: &ItemStruct) -> Result<Vec<TokenStream>> {
+        let tokens = input
+            .attrs
+            .iter()
+            .filter_map(|a| a.path().is_ident("varuemb_cross").then(|| &a.meta))
+            .map(|meta| -> Result<_> {
+                let list = meta.require_list()?;
+                let list = list.parse_args::<syn::MetaList>()?;
+                Ok(list.path.is_ident("forward").then(|| list.tokens.clone()))
+            })
+            .filter_map(Result::transpose)
+            .try_collect::<Vec<_>>()?;
+        if tokens.is_empty() {
+            return Err(Error::new(input.span(), "No attribute \"forward\" found"));
+        }
+        Ok(tokens)
+    }
+}
 impl parse::Parse for Forward {
     fn parse(input: parse::ParseStream) -> Result<Self> {
         let input = input.parse::<ItemStruct>()?;
 
-        let tokens = crate::extract_attrs(&input.attrs, &["cross", "forward"])?;
-        let members = parse::Parser::parse2(Members::parse_terminated, tokens)?;
+        let tokens = Self::extract_attrs(&input)?;
+        let members = tokens.into_iter().try_fold(Members::new(), |mut out, tokens| -> Result<_> {
+            out.extend(parse::Parser::parse2(Members::parse_terminated, tokens)?);
+            Ok(out)
+        })?;
 
         for member in members.iter() {
             let contains = match &member.ident {
@@ -313,6 +427,7 @@ impl quote::ToTokens for Forward {
 
             for interface in member.interfaces.iter() {
                 match interface {
+                    Interface::Gpio(gpio) => gpio.to_tokens(&self.input.ident, &member.ident, &field.ty, tokens),
                     Interface::I2c(i2c) => i2c.to_tokens(&self.input.ident, &member.ident, &field.ty, tokens),
                     Interface::Io(io) => io.to_tokens(&self.input.ident, &member.ident, &field.ty, tokens),
                     Interface::Spi(spi) => spi.to_tokens(&self.input.ident, &member.ident, &field.ty, tokens),
@@ -323,6 +438,7 @@ impl quote::ToTokens for Forward {
 }
 
 mod tokens {
+    syn::custom_keyword!(gpio);
     syn::custom_keyword!(i2c);
     syn::custom_keyword!(io);
     syn::custom_keyword!(spi);

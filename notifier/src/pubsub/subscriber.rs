@@ -1,7 +1,9 @@
 use super::{__evt, event, mixer, traits};
 use core::future::pending;
-use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering::*};
-use embassy_sync::{blocking_mutex::raw, channel};
+use core::sync::atomic::Ordering::*;
+use core::sync::atomic::{AtomicBool, AtomicUsize};
+use embassy_sync::blocking_mutex::raw;
+use embassy_sync::channel;
 
 type RawMutex = raw::CriticalSectionRawMutex;
 
@@ -23,7 +25,7 @@ impl<P, E, const C: usize> Subscription<P, E, C>
 where
     P: traits::PubSub,
     E: traits::IsPublisher<P>,
-    crate::assert::AssertStr<{ super::assert::subscriber::<P, E>() }>: crate::assert::True,
+    varuemb_utils::assert::Msg<{ super::assert::subscriber::<P, E>() }>: varuemb_utils::assert::IsTrue,
 {
     pub const fn default() -> Self {
         Self::new()
@@ -38,16 +40,11 @@ where
     pub(crate) const fn new() -> Self {
         Self {
             inner: channel::Channel::new(),
-            state: State {
-                receivers: AtomicUsize::new(0),
-                sending: AtomicBool::new(false),
-            },
+            state: State { receivers: AtomicUsize::new(0), sending: AtomicBool::new(false) },
         }
     }
 
-    pub(crate) fn as_dyn(
-        &'static self,
-    ) -> &'static dyn DynSubscription<event::Event<P::Notifier, E>> {
+    pub(crate) fn as_dyn(&'static self) -> &'static dyn DynSubscription<event::Event<P::Notifier, E>> {
         self
     }
 }
@@ -106,10 +103,7 @@ where
 {
     pub(crate) fn new(channel: &'static dyn DynSubscription<event::Event<N, E>>) -> Self {
         channel.state().receivers.fetch_add(1, AcqRel);
-        Self {
-            channel,
-            state: true,
-        }
+        Self { channel, state: true }
     }
 
     pub fn try_next(&mut self) -> Option<event::Event<N, E>> {
@@ -195,9 +189,7 @@ where
     M: mixer::Mixer<P::Notifier>,
 {
     pub(crate) fn new(inner: &'static P) -> Self {
-        Self {
-            inner: <P as mixer::SubscriberMixer<M>>::__new_mixed(inner),
-        }
+        Self { inner: <P as mixer::SubscriberMixer<M>>::__new_mixed(inner) }
     }
 
     pub async fn next(&mut self) -> event::Event<P::Notifier, M> {

@@ -1,26 +1,23 @@
-use crate::{
-    assert::*,
-    event::{self, traits as __evt},
-    pubsub::{self, traits as __pubsub},
-    service::traits as __svc,
-    traits::*,
-};
+use crate::event::{self, traits as __evt};
+use crate::pubsub::{self, traits as __pubsub};
+use crate::service::traits as __svc;
+use crate::traits::*;
 use core::ops::{Deref, Index};
 use embassy_time::{Duration, Timer};
-use futures_util::{future::pending, FutureExt};
+use futures_util::future::pending;
+use futures_util::FutureExt;
+use varuemb_utils::assert::*;
 use varuemb_utils::select;
+
 pub mod traits;
 
-pub type Result<T, R: traits::Rpc> = core::result::Result<
-    T,
-    pubsub::Error<R::Notifier, Request<R>, GetResponseError<R, R::Service>>,
->;
+pub type Result<T, R: traits::Rpc> =
+    core::result::Result<T, pubsub::Error<R::Notifier, Request<R>, GetResponseError<R, R::Service>>>;
 pub type GetResponse<P, R> = Response<pubsub::GetPubSub<P, R>>;
 pub type GetRequest<P, R> = Request<pubsub::GetPubSub<P, R>>;
 pub type GetRpcRequest<S, N> = RpcRequest<<S as __svc::Service<N>>::Impl>;
 pub type GetRpcSubscriber<S, N> = pubsub::Subscriber<N, Request<crate::GetPubSub<N, S>>>;
-pub type GetRpcRequestError<S, N> =
-    pubsub::Error<N, Request<crate::GetPubSub<N, S>>, <S as traits::RpcProvider<N>>::Error>;
+pub type GetRpcRequestError<S, N> = pubsub::Error<N, Request<crate::GetPubSub<N, S>>, <S as traits::RpcProvider<N>>::Error>;
 
 pub struct Container<R: traits::Rpc, const C: usize>
 where
@@ -37,21 +34,13 @@ where
         channel: __pubsub::GetSubscriberRet<R::Notifier, Response<R>>,
         meta: &'static crate::Metadata,
     ) -> Self {
-        Self {
-            inner: core::array::from_fn(|index| {
-                R::__new_rpc(Rpc {
-                    index,
-                    src: meta,
-                    channel,
-                })
-            }),
-        }
+        Self { inner: core::array::from_fn(|index| R::__new_rpc(Rpc { index, src: meta, channel })) }
     }
 }
 
 impl<R: traits::Rpc, const C: usize> Deref for Container<R, C>
 where
-    Assert<{ C == 1 }>: True,
+    Assert<{ C == 1 }>: IsTrue,
     R::Service: traits::RpcProvider<R::Notifier>,
 {
     type Target = traits::GetRpc<R>;
@@ -62,7 +51,7 @@ where
 
 impl<I, R: traits::Rpc, const C: usize> Index<I> for Container<R, C>
 where
-    Assert<{ C > 1 }>: True,
+    Assert<{ C > 1 }>: IsTrue,
     R::Service: traits::RpcProvider<R::Notifier>,
     I: core::slice::SliceIndex<[traits::GetRpc<R>]>,
 {
@@ -83,13 +72,11 @@ impl<P, S, const C: usize> Subscription<P, S, C>
 where
     P: __pubsub::PubSub,
     Response<S::Impl>: __pubsub::IsPublisher<P>,
-    AssertStr<{ pubsub::assert::subscriber::<P, Response<S::Impl>>() }>: True,
+    Msg<{ pubsub::assert::subscriber::<P, Response<S::Impl>>() }>: IsTrue,
     S: __svc::Service<P::Notifier, Impl: traits::Rpc> + traits::RpcProvider<P::Notifier>,
 {
     pub const fn default() -> Self {
-        Self {
-            pubsub: pubsub::Subscription::default(),
-        }
+        Self { pubsub: pubsub::Subscription::default() }
     }
 }
 impl<P, S, const C: usize> Deref for Subscription<P, S, C>
@@ -126,10 +113,7 @@ where
     R::Service: traits::RpcProvider<R::Notifier>,
 {
     fn clone(&self) -> Self {
-        Self {
-            src: self.src,
-            data: self.data.clone(),
-        }
+        Self { src: self.src, data: self.data.clone() }
     }
 }
 impl<R: traits::Rpc> __evt::Event<R::Notifier> for Request<R>
@@ -139,8 +123,7 @@ where
     type Service = R::Service;
 }
 
-type GetResponseData<R: traits::Rpc<Service = S>, S: traits::RpcProvider<R::Notifier>> =
-    S::Response;
+type GetResponseData<R: traits::Rpc<Service = S>, S: traits::RpcProvider<R::Notifier>> = S::Response;
 type GetResponseError<R: traits::Rpc<Service = S>, S: traits::RpcProvider<R::Notifier>> = S::Error;
 type GetResponseRes<R: traits::Rpc<Service = S>, S: traits::RpcProvider<R::Notifier>> =
     core::result::Result<GetResponseData<R, S>, GetResponseError<R, S>>;
@@ -157,10 +140,7 @@ where
     R::Service: traits::RpcProvider<R::Notifier>,
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Response")
-            .field("id", &self.id)
-            .field("data", &self.data)
-            .finish()
+        f.debug_struct("Response").field("id", &self.id).field("data", &self.data).finish()
     }
 }
 impl<R: traits::Rpc> Clone for Response<R>
@@ -168,10 +148,7 @@ where
     R::Service: traits::RpcProvider<R::Notifier>,
 {
     fn clone(&self) -> Self {
-        Self {
-            id: self.id,
-            data: self.data.clone(),
-        }
+        Self { id: self.id, data: self.data.clone() }
     }
 }
 impl<R: traits::Rpc> __evt::Event<R::Notifier> for Response<R>
@@ -243,13 +220,7 @@ where
             .set_targets([self.src])
             .allow_inactive(false)
             .inactive_is_err(true)
-            .publish_with(
-                Response {
-                    id: self.id,
-                    data: Ok(resp),
-                },
-                timeout,
-            )
+            .publish_with(Response { id: self.id, data: Ok(resp) }, timeout)
             .await;
         Ok(())
     }
@@ -264,10 +235,7 @@ where
             .set_targets([self.src])
             .allow_inactive(false)
             .inactive_is_err(true)
-            .publish(Response {
-                id: self.id,
-                data: Err(err),
-            });
+            .publish(Response { id: self.id, data: Err(err) });
         Ok(())
     }
 }
@@ -316,10 +284,7 @@ where
             .break_after_error(true)
             .set_targets([publisher.metadata()])
             .set_error_handler::<_, GetResponseError<R, S>>(|e| err = Some(e))
-            .publish(Request {
-                src: self.src,
-                data: req,
-            });
+            .publish(Request { src: self.src, data: req });
         if let Some(err) = err {
             use __pubsub::CanPublish;
             pubsub::PubSub::<R>::print_error(&err);
@@ -348,13 +313,7 @@ where
             .break_after_error(true)
             .set_targets([publisher.metadata()])
             .set_error_handler::<_, GetResponseError<R, S>>(|e| err = Some(e))
-            .publish_with(
-                Request {
-                    src: self.src,
-                    data: req,
-                },
-                timeout,
-            )
+            .publish_with(Request { src: self.src, data: req }, timeout)
             .await;
         if let Some(err) = err {
             use __pubsub::CanPublish;
@@ -400,28 +359,17 @@ where
         }
     }
 
-    pub(crate) async fn request<'a>(
-        subscriber: &mut pubsub::Subscriber<N, Request<R>>,
-    ) -> RpcRequest<R>
+    pub(crate) async fn request<'a>(subscriber: &mut pubsub::Subscriber<N, Request<R>>) -> RpcRequest<R>
     where
         [(); S::COUNT]:,
         N: NotifierService<S>,
         for<'r> &'r Req: Into<usize>,
     {
-        let event::Event {
-            data: Request { src, data },
-            meta: event::Metadata { id, dst, .. },
-            ..
-        } = subscriber.next().await;
+        let event::Event { data: Request { src, data }, meta: event::Metadata { id, dst, .. }, .. } =
+            subscriber.next().await;
 
         let pubsub = Self::publisher(dst.index.unwrap_or_default());
 
-        RpcRequest {
-            id,
-            src,
-            pubsub,
-            req_discriminant: (&data).into(),
-            data: Some(data),
-        }
+        RpcRequest { id, src, pubsub, req_discriminant: (&data).into(), data: Some(data) }
     }
 }

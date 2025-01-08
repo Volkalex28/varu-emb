@@ -1,6 +1,8 @@
 use self::State::*;
-use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering::*};
-use core::{fmt, ops::Deref, ptr};
+use core::ops::Deref;
+use core::sync::atomic::Ordering::*;
+use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize};
+use core::{fmt, ptr};
 
 enum State<N: 'static> {
     Empty,
@@ -16,7 +18,7 @@ impl<N: 'static> State<N> {
     const fn to_ptr(&self) -> *mut Item<N> {
         match self {
             State::Empty => ptr::null_mut(),
-            State::Last => unsafe { ptr::null_mut::<Item<N>>().byte_add(1) },
+            State::Last => ptr::without_provenance_mut(1),
             State::Next(item) => item.to_ptr(),
         }
     }
@@ -48,10 +50,7 @@ pub struct Item<N> {
 }
 impl<N: 'static> Item<N> {
     pub const fn new(value: N) -> Self {
-        Self {
-            value,
-            state: AtomicPtr::new(State::new().to_ptr()),
-        }
+        Self { value, state: AtomicPtr::new(State::new().to_ptr()) }
     }
 
     #[inline]
@@ -62,7 +61,7 @@ impl<N: 'static> Item<N> {
 
     #[inline]
     const fn to_ptr(&'static self) -> *mut Self {
-        (self as *const Self).cast_mut()
+        (&raw const *self).cast_mut()
     }
 }
 impl<N> Deref for Item<N> {
@@ -107,9 +106,7 @@ impl<N: 'static> Taker<N> {
 }
 impl<N: 'static> Drop for Taker<N> {
     fn drop(&mut self) {
-        if self.next().is_some() {
-            panic!()
-        }
+        while self.next().is_some() {}
     }
 }
 
@@ -119,18 +116,14 @@ enum Push<N: 'static> {
     Registrate(&'static Item<N>),
 }
 
-pub struct LUQueue<N> {
+pub struct LUQueue<N: 'static> {
     count: AtomicUsize,
     head: AtomicPtr<Item<N>>,
     pop_lock: AtomicBool,
 }
 impl<N: 'static> LUQueue<N> {
     pub const fn new() -> Self {
-        Self {
-            count: AtomicUsize::new(0),
-            head: AtomicPtr::new(ptr::null_mut()),
-            pop_lock: AtomicBool::new(false),
-        }
+        Self { count: AtomicUsize::new(0), head: AtomicPtr::new(ptr::null_mut()), pop_lock: AtomicBool::new(false) }
     }
 
     pub fn count(&self) -> usize {
@@ -138,10 +131,7 @@ impl<N: 'static> LUQueue<N> {
     }
 
     pub fn take(&'static self) -> Taker<N> {
-        Taker {
-            count: &self.count,
-            current: self.head.swap(ptr::null_mut(), SeqCst),
-        }
+        Taker { count: &self.count, current: self.head.swap(ptr::null_mut(), SeqCst) }
     }
 
     pub fn push_back(&self, node: &'static Item<N>) -> Option<bool> {
@@ -149,37 +139,24 @@ impl<N: 'static> LUQueue<N> {
 
         let result = loop {
             push = match push {
-                Push::Start => {
-                    match node
-                        .state
-                        .compare_exchange(Empty.to_ptr(), Last.to_ptr(), SeqCst, SeqCst)
-                    {
-                        Err(_) => break None,
-                        Ok(_) => Push::TryInsert,
-                    }
-                }
-                Push::TryInsert => {
-                    match self
-                        .head
-                        .compare_exchange(ptr::null_mut(), node.to_ptr(), SeqCst, SeqCst)
-                    {
-                        Ok(_) => break Some(true),
-                        Err(ptr) => Push::Registrate(Item::from_ptr(ptr).unwrap()),
-                    }
-                }
-                Push::Registrate(item) => match item.state.compare_exchange_weak(
-                    Last.to_ptr(),
-                    node.to_ptr(),
-                    SeqCst,
-                    SeqCst,
-                ) {
-                    Ok(_) => break Some(false),
-                    Err(ptr) => match State::from_ptr(ptr) {
-                        Empty => Push::TryInsert,
-                        Next(item) => Push::Registrate(item),
-                        Last => Push::Registrate(item),
-                    },
+                Push::Start => match node.state.compare_exchange(Empty.to_ptr(), Last.to_ptr(), SeqCst, SeqCst) {
+                    Err(_) => break None,
+                    Ok(_) => Push::TryInsert,
                 },
+                Push::TryInsert => match self.head.compare_exchange(ptr::null_mut(), node.to_ptr(), SeqCst, SeqCst) {
+                    Ok(_) => break Some(true),
+                    Err(ptr) => Push::Registrate(Item::from_ptr(ptr).unwrap()),
+                },
+                Push::Registrate(item) => {
+                    match item.state.compare_exchange_weak(Last.to_ptr(), node.to_ptr(), SeqCst, SeqCst) {
+                        Ok(_) => break Some(false),
+                        Err(ptr) => match State::from_ptr(ptr) {
+                            Empty => Push::TryInsert,
+                            Next(item) => Push::Registrate(item),
+                            Last => Push::Registrate(item),
+                        },
+                    }
+                }
             }
         };
 
@@ -215,17 +192,12 @@ impl<N: 'static> LUQueue<N> {
             }
 
             let next = {
-                let next = State::from_ptr(item.state.swap(Last.to_ptr(), SeqCst))
-                    .as_item()
-                    .map(|n| n.to_ptr());
+                let next = State::from_ptr(item.state.swap(Last.to_ptr(), SeqCst)).as_item().map(|n| n.to_ptr());
                 next.unwrap_or_else(|| self.get_last(current))
             };
             current.store(next, SeqCst);
 
-            if let Some(missed) = State::from_ptr(item.state.swap(Empty.to_ptr(), SeqCst))
-                .as_item()
-                .map(|i| i.to_ptr())
-            {
+            if let Some(missed) = State::from_ptr(item.state.swap(Empty.to_ptr(), SeqCst)).as_item().map(|i| i.to_ptr()) {
                 loop {
                     let last = self.get_last(current);
                     current = match current.compare_exchange(last, missed, SeqCst, SeqCst) {
@@ -264,6 +236,13 @@ impl<N: 'static> LUQueue<N> {
     #[inline]
     fn unlock_pop(&self) {
         self.pop_lock.store(false, Release)
+    }
+}
+impl<N: 'static> Drop for LUQueue<N> {
+    fn drop(&mut self) {
+        for item in &*self {
+            item.state.store(State::Empty.to_ptr(), Release);
+        }
     }
 }
 

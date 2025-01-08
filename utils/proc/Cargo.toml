@@ -1,7 +1,13 @@
 [package]
 name = "varuemb-utils-proc"
-version = "0.1.0"
-edition = "2021"
+
+authors.workspace      = true
+edition.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+repository.workspace   = true
+rust-version.workspace = true
+version.workspace      = true
 
 [lib]
 proc-macro = true
@@ -9,7 +15,9 @@ proc-macro = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-syn = { version = "2.0.15", features = ["full"] }
-quote = "1.0.26"
-proc-macro2 = "1.0.56"
-
+enum-as-derive = { version = "0.1" }
+heck           = { version = "0.5" }
+proc-macro2    = { version = "1.0" }
+quote          = { version = "1.0" }
+syn            = { version = "2.0", features = ["full"] }
+syn_derive     = { version = "0.2" }

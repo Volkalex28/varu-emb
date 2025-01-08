@@ -19,26 +19,18 @@ impl Metadata {
     where
         N: crate::traits::NotifierService<S>,
         S: crate::service::traits::Service<N>,
-        crate::assert::Assert<{ check::<N, S>() }>: crate::assert::True,
+        varuemb_utils::assert::Assert<{ check::<N, S>() }>: varuemb_utils::assert::IsTrue,
     {
-        Self {
-            id: N::ID,
-            index: if S::COUNT == 1 { None } else { Some(index) },
-            name: N::NAME,
-        }
+        Self { id: N::ID, index: if S::COUNT == 1 { None } else { Some(index) }, name: N::NAME }
     }
 
     pub(crate) const fn new_service<N, S>() -> Self
     where
         N: crate::traits::NotifierService<S>,
         S: crate::service::traits::Service<N>,
-        crate::assert::Assert<{ check::<N, S>() }>: crate::assert::True,
+        varuemb_utils::assert::Assert<{ check::<N, S>() }>: varuemb_utils::assert::IsTrue,
     {
-        Self {
-            id: N::ID,
-            index: None,
-            name: N::NAME,
-        }
+        Self { id: N::ID, index: None, name: N::NAME }
     }
 
     pub fn is_same(&self, other: &Self) -> bool {

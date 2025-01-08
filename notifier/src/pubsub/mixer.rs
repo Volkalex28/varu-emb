@@ -1,9 +1,9 @@
-use crate::{
-    event,
-    pubsub::{__evt, traits::*},
-    traits::*,
-};
-use core::{future::pending, marker::PhantomData};
+use crate::event;
+use crate::pubsub::__evt;
+use crate::pubsub::traits::*;
+use crate::traits::*;
+use core::future::pending;
+use core::marker::PhantomData;
 use core::mem::ManuallyDrop;
 
 pub trait Mixer<N: Notifier>: core::fmt::Debug {}
@@ -70,10 +70,7 @@ where
     P: Subscribed<E, Notifier = N> + MixMapper<M, E, Notifier = N>,
 {
     fn from_publisher(publisher: &'static P) -> Self {
-        Self {
-            subscriber: Subscribed::<E>::subscriber(publisher),
-            mapper: <P as MixMapper<M, E>>::MAPPER,
-        }
+        Self { subscriber: Subscribed::<E>::subscriber(publisher), mapper: <P as MixMapper<M, E>>::MAPPER }
     }
     fn wrap_data(data: &mut Self) -> Option<&mut MixData<P, M, E>> {
         Some(data)
@@ -116,10 +113,7 @@ const _: () = {
         P: Subscribed<E, Notifier = N> + MixMapper<M, E, Notifier = N>,
     {
         pub fn new(publisher: &'static P) -> Self {
-            Self {
-                data: FromPublisher::from_publisher(publisher),
-                _mixer: Default::default(),
-            }
+            Self { data: FromPublisher::from_publisher(publisher), _mixer: Default::default() }
         }
 
         pub async fn map(&mut self) -> event::Event<N, M> {

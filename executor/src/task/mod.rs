@@ -1,8 +1,8 @@
 use super::{Inner as Executor, Task as Instance};
 use core::cell::SyncUnsafeCell;
 use core::future::Future;
+use core::sync::atomic::AtomicPtr;
 use core::sync::atomic::Ordering::*;
-use core::sync::atomic::{AtomicPtr, AtomicUsize};
 use core::task::{Context, Poll};
 use core::{fmt, mem, pin, ptr};
 use varuemb_lockfree::luqueue::Item;
@@ -11,7 +11,7 @@ mod stat;
 mod state;
 pub(super) mod waker;
 
-type FmtFn = fn(&'static Task, &mut fmt::Formatter<'_>, bool) -> fmt::Result;
+type FmtFn = fn(*const Task, &'static Task, &mut fmt::Formatter<'_>, bool) -> fmt::Result;
 type PollFn = unsafe fn(&'static Task);
 
 const fn null_ptr<T>() -> AtomicPtr<T> {
@@ -34,11 +34,12 @@ struct VTable {
 
 pub(super) struct Data {
     pub(super) executor: AtomicPtr<Executor>,
+    pool: AtomicPtr<Task>,
     vtable: VTable,
 }
 impl Data {
     const fn new() -> Self {
-        Self { executor: null_ptr(), vtable: VTable { fmt_fn: null_ptr(), poll_fn: null_ptr() } }
+        Self { executor: null_ptr(), pool: null_ptr(), vtable: VTable { fmt_fn: null_ptr(), poll_fn: null_ptr() } }
     }
 
     fn executor(&self, executor: &'static Executor) -> Result<&Self, &'static str> {
@@ -54,6 +55,11 @@ impl Data {
         Ok(self)
     }
 
+    fn pool(&self, pool: &'static Task) -> Result<&Self, &'static str> {
+        self.pool.store(pool.as_ptr().cast_mut(), SeqCst);
+        Ok(self)
+    }
+
     fn poll_fn(&self, poll_fn: PollFn) -> Result<&Self, &'static str> {
         if !self.vtable.poll_fn.swap((poll_fn as *const ()).cast_mut(), SeqCst).is_null() {
             return Err("VTable");
@@ -66,11 +72,10 @@ pub(super) struct Task {
     pub(super) data: Data,
     state: state::State,
     stat: stat::Statistic,
-    index: AtomicUsize,
 }
 impl Task {
     const fn new() -> Self {
-        Self { data: Data::new(), state: state::State::new(), stat: stat::Statistic::new(), index: AtomicUsize::new(0) }
+        Self { data: Data::new(), state: state::State::new(), stat: stat::Statistic::new() }
     }
 
     pub(super) unsafe fn poll(&'static self) {
@@ -88,21 +93,8 @@ impl Task {
             return;
         };
         if self.state.ready() {
-            let executor = executor.as_ref();
-            if let Err(index) = self.index.compare_exchange(0, executor.next_index(), AcqRel, Relaxed) {
-                panic!("Not ready but index not zero: {index}")
-            }
-            executor.notify();
+            executor.as_ref().enqueue(Ref::from_task(self));
         }
-    }
-
-    #[inline]
-    pub(super) fn index(&self) -> usize {
-        self.index.load(Acquire)
-    }
-
-    pub(super) fn enqueued(&self) {
-        self.index.store(0, Release)
     }
 
     #[inline]
@@ -124,7 +116,7 @@ impl fmt::Debug for Task {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         unsafe {
             let fmt_fn: FmtFn = mem::transmute(self.data.vtable.fmt_fn.load(Acquire).cast_const());
-            (fmt_fn)(core::mem::transmute(self), f, true)
+            (fmt_fn)(self.data.pool.load(Relaxed), core::mem::transmute(self), f, true)
         }
     }
 }
@@ -132,7 +124,7 @@ impl fmt::Display for Task {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         unsafe {
             let fmt_fn: FmtFn = mem::transmute(self.data.vtable.fmt_fn.load(Acquire).cast_const());
-            (fmt_fn)(core::mem::transmute(self), f, false)
+            (fmt_fn)(self.data.pool.load(Relaxed), core::mem::transmute(self), f, false)
         }
     }
 }
@@ -160,10 +152,20 @@ impl<T: Instance> Storage<T> {
         self.task.state.spawn()
     }
 
-    unsafe fn init(&'static self, task: T, executor: &'static Executor) -> Result<(), &'static str> {
-        ptr::write((*self.future.as_ptr()).get(), task.process());
+    unsafe fn init(
+        &'static self,
+        pool_ref: PoolRef<'static, T>,
+        task: T,
+        executor: &'static Executor,
+    ) -> Result<(), &'static str> {
+        ptr::write((*self.future.as_ptr()).get(), task.__process());
 
-        self.task.data.fmt_fn(Self::fmt)?.poll_fn(Self::poll)?.executor(executor)?;
+        self.task
+            .data
+            .poll_fn(Self::poll)?
+            .fmt_fn(pool_ref.1)?
+            .pool(&pool_ref.0[0].task)?
+            .executor(executor)?;
         executor.start_task(Ref(&self.task));
 
         Ok(())
@@ -175,7 +177,6 @@ impl<T: Instance> Storage<T> {
         let executor = &*self.task.data.executor.swap(ptr::null_mut(), SeqCst);
         executor.stop_task(Ref(&self.task));
         if is_ready {
-            self.task.index.store(0, Relaxed);
             self.task.state.despawn();
         }
 
@@ -187,14 +188,14 @@ impl<T: Instance> Storage<T> {
     unsafe fn poll(task: &'static Task) {
         let this = task.as_storage::<T>();
 
-        let waker = waker::make_waker_isr(task);
+        let waker = waker::make_waker(task);
         let mut cx = Context::from_waker(&waker);
 
         let future = pin::Pin::new_unchecked(&mut *(*this.future.as_ptr()).get());
         task.stat.runned();
         match future.poll(&mut cx) {
             Poll::Ready(result) => {
-                T::finish(result);
+                T::__finish(result);
                 this.deinit()
             }
             Poll::Pending => { /*nothing*/ }
@@ -202,33 +203,15 @@ impl<T: Instance> Storage<T> {
 
         mem::forget(waker);
     }
-
-    fn fmt(task: &'static Task, f: &mut fmt::Formatter<'_>, is_debug: bool) -> fmt::Result {
-        let pool = T::pool();
-        let this = unsafe { task.as_storage::<T>() };
-
-        let index = pool.0.iter().position(|s| ptr::from_ref(s) == ptr::from_ref(this)).unwrap();
-        if pool.0.len() >= 2 {
-            write!(f, "Task {}[{}]: ", T::NAME, index)?;
-        } else {
-            write!(f, "Task {}: ", T::NAME)?;
-        }
-
-        if is_debug {
-            write!(f, "{:?}, {:?}", this.task.state, this.task.stat)
-        } else {
-            write!(f, "{}, {}", this.task.state, this.task.stat)
-        }
-    }
 }
 
-pub struct PoolRef<T: Instance>(&'static [Storage<T>]);
-impl<T: Instance> PoolRef<T> {
+pub struct PoolRef<'a, T: Instance>(&'a [Storage<T>], FmtFn);
+impl<T: Instance> PoolRef<'static, T> {
     pub(super) fn spawn(self, task: T, executor: &'static Executor) -> Result<(), T> {
         let Some(storage) = self.0.iter().find(|storage| storage.claim()) else {
             return Err(task);
         };
-        if let Err(place) = unsafe { storage.init(task, executor) } {
+        if let Err(place) = unsafe { storage.init(self, task, executor) } {
             panic!("[{}] {place} is already initialized", T::NAME)
         }
         Ok(())
@@ -242,8 +225,25 @@ impl<T: Instance, const SIZE: usize> Pool<T, SIZE> {
     }
 
     #[inline(always)]
-    pub fn as_ref(&'static self) -> PoolRef<T> {
-        PoolRef(&self.0)
+    pub fn as_ref(&self) -> PoolRef<T> {
+        PoolRef(&self.0, Self::fmt)
+    }
+
+    fn fmt(this: *const Task, task: &'static Task, f: &mut fmt::Formatter<'_>, is_debug: bool) -> fmt::Result {
+        let pool = unsafe { &*this.cast::<Self>() };
+
+        let index = pool.0.iter().position(|s| s.task == *task).unwrap();
+        if SIZE > 1 {
+            write!(f, "Task {}[{}]: ", T::NAME, index)?;
+        } else {
+            write!(f, "Task {}: ", T::NAME)?;
+        }
+
+        if is_debug {
+            write!(f, "{:?}, {:?}", task.state, task.stat)
+        } else {
+            write!(f, "{}, {}", task.state, task.stat)
+        }
     }
 }
 unsafe impl<T: Instance, const SIZE: usize> Sync for Pool<T, SIZE> {}

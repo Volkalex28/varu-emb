@@ -2,25 +2,20 @@ use crate::{Error, Result};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use std::sync::LazyLock;
-use syn::{
-    parse::{self},
-    spanned::Spanned,
-    DeriveInput, Token,
-};
+use syn::parse::{self};
+use syn::spanned::Spanned;
+use syn::Token;
 
 #[cfg(not(feature = "testing"))]
 const PATH: LazyLock<TokenStream> = LazyLock::new(|| quote! { ::varuemb::devices::register:: });
 #[cfg(feature = "testing")]
 const PATH: LazyLock<TokenStream> = LazyLock::new(|| quote! { crate::register:: });
 
+#[derive(Default)]
 enum Address {
+    #[default]
     Skip,
     Offset(syn::Expr),
-}
-impl Default for Address {
-    fn default() -> Self {
-        Self::Offset(syn::parse_quote!(0))
-    }
 }
 impl parse::Parse for Address {
     fn parse(input: parse::ParseStream) -> Result<Self> {
@@ -89,6 +84,7 @@ impl parse::Parse for Config {
                 return Err(lookahead.error());
             }
         }
+
         let Self::Data { address, timeout, size } = Self::default() else { unreachable!() };
         Ok(Self::Data {
             address: parse_address.unwrap_or(address),
@@ -132,10 +128,10 @@ pub struct Register {
     order: Order,
     read: Config,
     write: Config,
-    input: DeriveInput,
+    input: syn::ItemStruct,
 }
 impl Register {
-    fn parse_attributes(input: DeriveInput, attrs: parse::ParseStream) -> Result<Self> {
+    fn parse_attributes(input: syn::ItemStruct, attrs: parse::ParseStream) -> Result<Self> {
         let mut address = Option::None;
         let mut count = Option::None;
         let mut order = Option::None;
@@ -154,7 +150,6 @@ impl Register {
             }
         }
 
-        let address = address.ok_or(Error::new(input.span(), "register address must be specified"))?;
         let mut this = Self {
             count: count.unwrap_or_else(|| syn::parse_quote!(1)),
             order: order.unwrap_or_default(),
@@ -163,8 +158,10 @@ impl Register {
             input,
         };
 
-        this.read.set_base_address(&address);
-        this.write.set_base_address(&address);
+        if let Some(address) = address {
+            this.read.set_base_address(&address);
+            this.write.set_base_address(&address);
+        }
 
         Ok(this)
     }
@@ -185,30 +182,25 @@ impl Register {
 
 impl parse::Parse for Register {
     fn parse(input: parse::ParseStream) -> Result<Self> {
-        let input = input.parse::<DeriveInput>()?;
+        let input = input.parse::<syn::ItemStruct>()?;
         let span = input.span();
 
-        match &input.data {
-            syn::Data::Struct(_) => Ok(()),
-            syn::Data::Enum(_) => Err(Error::new(span, "Enum is not supported for Register")),
-            syn::Data::Union(_) => Err(Error::new(span, "Union is not supported for Register")),
-        }?;
-        let attrs = input
-            .attrs
-            .iter()
-            .filter_map(|a| {
-                if !a.path().is_ident("register") {
-                    return None;
+        let attrs = input.attrs.iter().filter_map(|a| a.path().is_ident("varuemb_devices").then(|| &a.meta)).try_fold(
+            TokenStream::new(),
+            |mut out, meta| -> Result<_> {
+                let list = meta.require_list()?;
+                let list = list.parse_args::<syn::MetaList>()?;
+                if list.path.is_ident("register") {
+                    out.extend(list.tokens.clone());
                 }
-                Some(a.parse_args::<TokenStream>())
-            })
-            .try_collect::<Vec<_>>()?;
+                Ok(out)
+            },
+        )?;
 
         if attrs.is_empty() {
             return Err(Error::new(span, "No attribute \"register\" found"));
         }
 
-        let attrs = attrs.into_iter().flatten().collect::<TokenStream>();
         parse::Parser::parse2(move |attrs: parse::ParseStream| Self::parse_attributes(input, attrs), attrs)
     }
 }

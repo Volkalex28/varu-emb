@@ -32,6 +32,11 @@ impl fmt::Debug for Thread {
         fmt::Display::fmt(self, f)
     }
 }
+impl PartialEq for Thread {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && (&raw const *self.executor == &raw const *other.executor)
+    }
+}
 impl Thread {
     #[inline]
     #[allow(unused)]
@@ -45,18 +50,23 @@ impl Thread {
     }
 }
 
-pub struct Application {
+pub struct Statistic {
     threads: LUQueue<Thread>,
 }
-impl Application {
+impl Statistic {
     #[inline]
     pub const fn new() -> Self {
         Self { threads: LUQueue::new() }
     }
 
     #[inline]
-    pub(super) fn new_thread(&'static self, thread: &'static Item<Thread>) {
-        self.threads.push_back(thread);
+    pub(super) fn new_thread(&'static self, thread: &'static Item<Thread>) -> Option<&'static Item<Thread>> {
+        self.threads.push_back(thread).map(|_| thread)
+    }
+
+    #[inline]
+    pub(super) fn delete_thread(&'static self, thread: &'static Item<Thread>) -> Option<&'static Item<Thread>> {
+        self.threads.pop(thread)
     }
 
     #[inline]

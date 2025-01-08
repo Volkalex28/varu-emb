@@ -1,17 +1,13 @@
-use crate::{
-    assert::*,
-    event::{self, traits as __evt},
-    rpc::{self, traits as __rpc},
-    service::traits as __svc,
-    traits::*,
-    Metadata,
-};
-use core::{
-    future::pending,
-    marker::PhantomData,
-    ops::{Deref, Index},
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use crate::event::{self, traits as __evt};
+use crate::rpc::{self, traits as __rpc};
+use crate::service::traits as __svc;
+use crate::traits::*;
+use crate::Metadata;
+use core::future::pending;
+use core::marker::PhantomData;
+use core::ops::{Deref, Index};
+use core::sync::atomic::{AtomicUsize, Ordering};
+use varuemb_utils::assert::*;
 
 use embassy_sync::channel::TrySendError;
 use embassy_time::{Duration, Timer};
@@ -30,8 +26,7 @@ pub type GetDynSubscription<N, E> = &'static dyn DynSubscription<GetEvent<N, E>>
 pub type GetEvent<N, E> = event::Event<N, E>;
 pub type GetService<P> = <P as traits::PubSub>::Service;
 pub type GetEventService<P, E> = <E as __evt::Event<<P as traits::PubSub>::Notifier>>::Service;
-pub type GetEventPubSub<P, E> =
-    <GetEventService<P, E> as __svc::Service<<P as traits::PubSub>::Notifier>>::Impl;
+pub type GetEventPubSub<P, E> = <GetEventService<P, E> as __svc::Service<<P as traits::PubSub>::Notifier>>::Impl;
 
 pub(crate) mod assert {
     use super::traits;
@@ -94,16 +89,10 @@ impl<N, E: core::fmt::Debug, RE: core::fmt::Debug> core::fmt::Debug for Error<N,
         match self {
             Error::Full(f0) => f.debug_tuple("Full").field(&f0).finish(),
             Error::Inactive(f0) => f.debug_tuple("Inactive").field(&f0).finish(),
-            Error::Timeout(f0, f1) => f
-                .debug_struct("Timeout")
-                .field("Meta", &f0)
-                .field("Duration", &f1)
-                .finish(),
-            Error::IncorrectResponse(f0, f1) => f
-                .debug_struct("IncorrectResponse")
-                .field("Meta", &format_args!("{}", f0))
-                .field("Id", &f1)
-                .finish(),
+            Error::Timeout(f0, f1) => f.debug_struct("Timeout").field("Meta", &f0).field("Duration", &f1).finish(),
+            Error::IncorrectResponse(f0, f1) => {
+                f.debug_struct("IncorrectResponse").field("Meta", &format_args!("{}", f0)).field("Id", &f1).finish()
+            }
             Error::Response(f0, f1, err) => f
                 .debug_struct("Response")
                 .field("Meta", &format_args!("{}", f0))
@@ -120,7 +109,7 @@ pub struct Container<P: traits::PubSub, const C: usize> {
 
 impl<P: traits::PubSub, const C: usize> Container<P, C>
 where
-    Assert<{ C > 1 }>: True,
+    Assert<{ C > 1 }>: IsTrue,
 {
     #[inline]
     pub fn get(&self, index: usize) -> Option<&PubSub<P>> {
@@ -163,7 +152,7 @@ unsafe impl<P: traits::PubSub, const C: usize> traits::GetPubSub<P> for Containe
 
 impl<P: traits::PubSub, const C: usize> Deref for Container<P, C>
 where
-    Assert<{ C == 1 }>: True,
+    Assert<{ C == 1 }>: IsTrue,
 {
     type Target = PubSub<P>;
     fn deref(&self) -> &Self::Target {
@@ -174,7 +163,7 @@ where
 impl<P: traits::PubSub, const C: usize, I> Index<I> for Container<P, C>
 where
     I: core::slice::SliceIndex<[PubSub<P>]>,
-    Assert<{ C > 1 }>: True,
+    Assert<{ C > 1 }>: IsTrue,
 {
     type Output = I::Output;
     fn index(&self, index: I) -> &Self::Output {
@@ -193,13 +182,7 @@ pub struct PublishData {
 
 impl PublishData {
     fn new(id: usize, total: usize) -> Self {
-        Self {
-            id,
-            total,
-            errors: 0,
-            published: 0,
-            not_published: 0,
-        }
+        Self { id, total, errors: 0, published: 0, not_published: 0 }
     }
 }
 
@@ -245,10 +228,7 @@ where
         self
     }
 
-    pub fn set_error_handler<EhNew, ERNew>(
-        self,
-        error_handler: EhNew,
-    ) -> PublishConfigurator<'p, P, EhNew, E, I, ERNew>
+    pub fn set_error_handler<EhNew, ERNew>(self, error_handler: EhNew) -> PublishConfigurator<'p, P, EhNew, E, I, ERNew>
     where
         EhNew: FnMut(Error<P::Notifier, E, ERNew>),
     {
@@ -297,38 +277,17 @@ where
         self,
         data: E,
         timeout: Option<Duration>,
-    ) -> PublishConfig<
-        P::Notifier,
-        E,
-        impl for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState,
-        Eh,
-        ER,
-    >
+    ) -> PublishConfig<P::Notifier, E, impl for<'s> Fn(&'s subscriber::State, &'static Metadata) -> TargetState, Eh, ER>
     where
         E: __evt::Event<P::Notifier, Service = P::Service>,
     {
-        let Self {
-            allow_inactive,
-            selector,
-            error_handler,
-            inactive_is_err,
-            break_after_error,
-            ..
-        } = self;
+        let Self { allow_inactive, selector, error_handler, inactive_is_err, break_after_error, .. } = self;
         let allow_inactive = allow_inactive.unwrap_or(true);
         let checker = move |state: &subscriber::State, meta| -> TargetState {
             match &selector {
-                PublishSelector::Target(targets)
-                    if !targets.clone().any(|target| meta == target) =>
-                {
-                    TargetState::Filtered
-                }
-                PublishSelector::Filter(filter) if !filter.clone().all(|target| meta != target) => {
-                    TargetState::Filtered
-                }
-                _ if !allow_inactive && state.receivers.load(Ordering::Acquire) == 0 => {
-                    TargetState::Inactive
-                }
+                PublishSelector::Target(targets) if !targets.clone().any(|target| meta == target) => TargetState::Filtered,
+                PublishSelector::Filter(filter) if !filter.clone().all(|target| meta != target) => TargetState::Filtered,
+                _ if !allow_inactive && state.receivers.load(Ordering::Acquire) == 0 => TargetState::Inactive,
                 _ => TargetState::Ok,
             }
         };
@@ -377,11 +336,7 @@ pub struct PubSub<P: traits::PubSub> {
 
 impl<P: traits::PubSub> PubSub<P> {
     pub const fn new(i: usize) -> Self {
-        Self {
-            index: AtomicUsize::new(i),
-            inner: P::NEW,
-            event_id: AtomicUsize::new(0),
-        }
+        Self { index: AtomicUsize::new(i), inner: P::NEW, event_id: AtomicUsize::new(0) }
     }
 }
 
@@ -403,9 +358,7 @@ where
         S: __svc::Service<N, Impl: __rpc::Rpc> + __rpc::RpcProvider<N>,
         P: traits::Subscribed<rpc::Response<S::Impl>, Notifier = N> + traits::CanMetadata,
     {
-        N::get()
-            .__get()
-            .rpc(traits::Subscribed::channel(self), self.metadata())
+        N::get().__get().rpc(traits::Subscribed::channel(self), self.metadata())
     }
 
     pub fn subscriber<E>(&'static self) -> Subscriber<P::Notifier, E>
@@ -507,11 +460,7 @@ where
 fn pre_publish<P, E, Ch, Eh, ER>(
     pub_sub: &PubSub<P>,
     config: &mut PublishConfig<P::Notifier, E, Ch, Eh, ER>,
-) -> (
-    [Result<(GetDynSubscription<P::Notifier, E>, GetEvent<P::Notifier, E>), bool>;
-        P::Notifier::CHANNEL_COUNT],
-    PublishData,
-)
+) -> ([Result<(GetDynSubscription<P::Notifier, E>, GetEvent<P::Notifier, E>), bool>; P::Notifier::CHANNEL_COUNT], PublishData)
 where
     [(); P::Notifier::ID_COUNT]:,
     [(); P::Notifier::CHANNEL_COUNT]:,
@@ -607,10 +556,7 @@ where
     P: traits::Publisher<E, Notifier: NotifierPublisher<E>> + traits::CanMetadata,
 {
     type Notifier = P::Notifier;
-    fn __raw_publish<Ch, Eh, ER>(
-        &self,
-        mut config: PublishConfig<Self::Notifier, E, Ch, Eh, ER>,
-    ) -> PublishData
+    fn __raw_publish<Ch, Eh, ER>(&self, mut config: PublishConfig<Self::Notifier, E, Ch, Eh, ER>) -> PublishData
     where
         E: __evt::Event<Self::Notifier>,
         Eh: FnMut(Error<Self::Notifier, E, ER>),
@@ -627,10 +573,7 @@ where
 
             let meta = event.meta.dst;
             let meta_evt = event.meta;
-            let res = subscriber
-                .sender()
-                .try_send(event)
-                .map_err(|TrySendError::Full(evt)| Error::Full(evt));
+            let res = subscriber.sender().try_send(event).map_err(|TrySendError::Full(evt)| Error::Full(evt));
 
             if post_publish(res, &mut config, subscriber, meta, meta_evt, &mut data) {
                 break;
@@ -639,10 +582,7 @@ where
         data
     }
 
-    async fn __raw_publish_async<Ch, Eh, ER>(
-        &self,
-        mut config: PublishConfig<Self::Notifier, E, Ch, Eh, ER>,
-    ) -> PublishData
+    async fn __raw_publish_async<Ch, Eh, ER>(&self, mut config: PublishConfig<Self::Notifier, E, Ch, Eh, ER>) -> PublishData
     where
         E: __evt::Event<Self::Notifier>,
         Eh: FnMut(Error<Self::Notifier, E, ER>),

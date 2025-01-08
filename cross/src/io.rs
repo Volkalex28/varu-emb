@@ -19,6 +19,55 @@ pub mod asynch {
     };
 }
 
+pub mod serial {
+    use enum_as_derive::EnumAs;
+
+    /// Number of data bits
+    #[derive(EnumAs, PartialEq, Eq, Copy, Clone, Debug)]
+    pub enum DataBits {
+        DataBits5 = 0,
+        DataBits6 = 1,
+        DataBits7 = 2,
+        DataBits8 = 3,
+        DataBits9 = 4,
+    }
+
+    /// Parity check
+    #[derive(EnumAs, PartialEq, Eq, Copy, Clone, Debug)]
+    pub enum Parity {
+        None,
+        Even,
+        Odd,
+    }
+
+    /// Number of stop bits
+    #[derive(EnumAs, PartialEq, Eq, Copy, Clone, Debug)]
+    pub enum StopBits {
+        /// 0.5 stop bits
+        Stop0P5 = 1,
+        /// 1 stop bit
+        Stop1   = 2,
+        /// 1.5 stop bits
+        Stop1P5 = 3,
+        /// 2 stop bits
+        Stop2   = 4,
+    }
+
+    /// Serial Configuration
+    #[derive(PartialEq, Eq, Copy, Clone, Debug)]
+    pub struct Config {
+        pub baudrate: u32,
+        pub data_bits: DataBits,
+        pub parity: Parity,
+        pub stop_bits: StopBits,
+    }
+    impl Default for Config {
+        fn default() -> Self {
+            Self { baudrate: 115_200, data_bits: DataBits::DataBits8, parity: Parity::None, stop_bits: StopBits::Stop1 }
+        }
+    }
+}
+
 mod alias {
     pub use embedded_io::{ErrorType as IoErrorType, Read as IoRead, Write as IoWrite};
     pub use embedded_io_async::{Read as IoAsyncRead, Write as IoAsyncWrite};

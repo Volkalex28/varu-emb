@@ -21,17 +21,20 @@ edition      = "2021"
 homepage     = "https://github.com/Volkalex28/varu-emb#readme"
 license      = "MIT"
 repository   = "https://github.com/Volkalex28/varu-emb"
-rust-version = "1.77"
-version      = "0.3.3"
+rust-version = "1.80"
+version      = "0.4.0"
 
 [workspace]
-members = ["cross", "executor", "lockfree", "notifier", "utils", "build"]
+members = ["cfg", "cross", "executor", "lockfree", "notifier", "utils", "build"]
 
 [features]
-default = ["cross", "devices", "executor", "utils"]
-std     = ["cross/std", "executor/std"]
+default = ["cfg", "cross", "devices", "executor", "utils"]
+std     = ["cross?/std", "executor?/std"]
+
+cross = ["dep:cross", "utils"]
 
 [dependencies]
+cfg      = { path = "cfg", package = "varuemb-cfg", optional = true }
 cross    = { path = "cross", package = "varuemb-cross", optional = true }
 devices  = { path = "devices", package = "varuemb-devices", optional = true }
 executor = { path = "executor", package = "varuemb-executor", optional = true }

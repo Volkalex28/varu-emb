@@ -24,7 +24,7 @@ pub mod newtype;
 
 pub use array_init::ArrayInitializer;
 // pub use newtype::*;
-// pub use varuemb_utils_proc::multi_impl_block;
+pub use varuemb_utils_proc::*;
 
 pub mod __private {
     pub use {const_format, embassy_futures, paste};
