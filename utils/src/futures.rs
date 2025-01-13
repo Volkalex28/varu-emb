@@ -1,10 +1,7 @@
 #[macro_export]
 macro_rules! select {
-    {impl unwrap_ident { $($prev:tt)* }; #[cfg($cond:meta)] _ = $fut:expr => $handler:block $($rest:tt)*} => {
-        $crate::select!{ impl unwrap_ident { $($prev)* #[cfg($cond)] F as [] _ = $fut => $handler }; $($rest)* }
-    };
     {impl unwrap_ident { $($prev:tt)* }; #[cfg($cond:meta)] $ident:pat = $fut:expr => $handler:block $($rest:tt)* } => {
-        $crate::select!{ impl unwrap_ident { $($prev)* #[cfg($cond)] F as [mut] $ident = $fut => $handler }; $($rest)* }
+        $crate::select!{ impl unwrap_ident { $($prev)* #[cfg($cond)] F as $ident = $fut => $handler }; $($rest)* }
     };
     {impl unwrap_ident { $($prev:tt)* }; } => {
         $crate::select!{ impl final; $($prev)* }
@@ -20,7 +17,7 @@ macro_rules! select {
         $crate::select!{ impl unwrap_ident {}; $($prev)* }
     };
 
-    {impl final; $(#[cfg($cond:meta)] $name:ident as [$($mut:tt)?] $ident:pat = $fut:expr => $handler:block)+ } => {{
+    {impl final; $(#[cfg($cond:meta)] $name:ident as $ident:pat = $fut:expr => $handler:block)+ } => {{
         mod __select { $crate::__private::paste::paste! {
             #[derive(Debug, Clone)]
             pub enum Either< $(#[cfg($cond)] [< $name:camel:upper ${ index() } >] , )+ > {
@@ -80,7 +77,7 @@ macro_rules! select {
                 $(
                     #[cfg($cond)]
                     #[allow(unused_mut)]
-                    __select::Either:: [< $name:camel ${ index() } >] ($($mut)? $ident) => { $handler }
+                    __select::Either:: [< $name:camel ${ index() } >] ($ident) => { $handler }
                 )+
             }
         }
