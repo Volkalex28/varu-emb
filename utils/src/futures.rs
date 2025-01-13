@@ -1,30 +1,26 @@
 #[macro_export]
 macro_rules! select {
-    {$($(#[cfg($cond:meta)])? $ident:tt = $fut:expr => $handler:block)+} => {
-        $crate::select!{ impl unwrap_cfg {}; $( $(#[cfg($cond)])? $ident = $fut => $handler )+ }
+    {impl unwrap_ident { $($prev:tt)* }; #[cfg($cond:meta)] _ = $fut:expr => $handler:block $($rest:tt)*} => {
+        $crate::select!{ impl unwrap_ident { $($prev)* #[cfg($cond)] F as [] _ = $fut => $handler }; $($rest)* }
+    };
+    {impl unwrap_ident { $($prev:tt)* }; #[cfg($cond:meta)] $ident:pat = $fut:expr => $handler:block $($rest:tt)* } => {
+        $crate::select!{ impl unwrap_ident { $($prev)* #[cfg($cond)] F as [mut] $ident = $fut => $handler }; $($rest)* }
+    };
+    {impl unwrap_ident { $($prev:tt)* }; } => {
+        $crate::select!{ impl final; $($prev)* }
     };
 
-    {impl unwrap_cfg { $($prev:tt)* }; #[cfg($cond:meta)] $ident:tt = $fut:expr => $handler:block $($rest:tt)*} => {
+    {impl unwrap_cfg { $($prev:tt)* }; #[cfg($cond:meta)] $ident:pat = $fut:expr => $handler:block $($rest:tt)*} => {
         $crate::select!{ impl unwrap_cfg { $($prev)* #[cfg($cond)] $ident = $fut => $handler }; $($rest)* }
     };
-    {impl unwrap_cfg { $($prev:tt)* }; $ident:tt = $fut:expr => $handler:block $($rest:tt)* } => {
+    {impl unwrap_cfg { $($prev:tt)* }; $ident:pat = $fut:expr => $handler:block $($rest:tt)* } => {
         $crate::select!{ impl unwrap_cfg { $($prev)* #[cfg(not(any()))] $ident = $fut => $handler }; $($rest)* }
     };
     {impl unwrap_cfg { $($prev:tt)* }; } => {
         $crate::select!{ impl unwrap_ident {}; $($prev)* }
     };
 
-    {impl unwrap_ident { $($prev:tt)* }; #[cfg($cond:meta)] _ = $fut:expr => $handler:block $($rest:tt)*} => {
-        $crate::select!{ impl unwrap_ident { $($prev)* #[cfg($cond)] F as [] _ = $fut => $handler }; $($rest)* }
-    };
-    {impl unwrap_ident { $($prev:tt)* }; #[cfg($cond:meta)] $ident:ident = $fut:expr => $handler:block $($rest:tt)* } => {
-        $crate::select!{ impl unwrap_ident { $($prev)* #[cfg($cond)] F as [mut] $ident = $fut => $handler }; $($rest)* }
-    };
-    {impl unwrap_ident { $($prev:tt)* }; } => {
-        $crate::select!{ impl final;  $($prev)* }
-    };
-
-    {impl final; $(#[cfg($cond:meta)] $name:ident as [$($mut:tt)?] $ident:tt = $fut:expr => $handler:block)+ } => {{
+    {impl final; $(#[cfg($cond:meta)] $name:ident as [$($mut:tt)?] $ident:pat = $fut:expr => $handler:block)+ } => {{
         mod __select { $crate::__private::paste::paste! {
             #[derive(Debug, Clone)]
             pub enum Either< $(#[cfg($cond)] [< $name:camel:upper ${ index() } >] , )+ > {
@@ -89,6 +85,10 @@ macro_rules! select {
             }
         }
     }};
+
+    {$($(#[cfg($cond:meta)])? $ident:pat = $fut:expr => $handler:block)+} => {
+        $crate::select!{ impl unwrap_cfg {}; $( $(#[cfg($cond)])? $ident = $fut => $handler )+ }
+    };
 }
 
 #[macro_export]
