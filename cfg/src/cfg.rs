@@ -1,4 +1,4 @@
-use enum_as_derive::EnumAs;
+use enum_as_inner::EnumAsInner;
 use heck::{ToShoutySnakeCase, ToSnakeCase};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
@@ -13,7 +13,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 type Fields<A = Attribute> = HashMap<syn::Ident, A>;
 type CfgMap = HashMap<String, Fields<syn::Expr>>;
 
-#[derive(EnumAs, ToTokens)]
+#[derive(EnumAsInner, ToTokens)]
 enum Attribute {
     Default(TokenStream),
 
@@ -214,7 +214,7 @@ mod tokens {
 mod parsing {
     use super::*;
 
-    #[derive(Parse, EnumAs)]
+    #[derive(Parse, EnumAsInner)]
     pub enum AttributeType {
         #[parse(peek = tokens::default)]
         Default { _default: tokens::default, _colon: Token![:], value: TokenStream },

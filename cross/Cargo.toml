@@ -17,7 +17,7 @@ embedded-hal       = { version = "1.0.0" }
 embedded-hal-async = { version = "1.0.0" }
 embedded-io        = { version = "0.6.1" }
 embedded-io-async  = { version = "0.6.1" }
-enum-as-derive     = { version = "0.1" }
+enum-as-inner      = { version = "0.6" }
 forward-traits     = { git = "https://github.com/Volkalex28/forward-traits.git", branch = "asynch" }
 fugit              = { version = "0.3" }
 proc               = { path = "proc", package = "varuemb-cross-proc" }

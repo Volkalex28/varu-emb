@@ -1,4 +1,4 @@
-use enum_as_derive::EnumAs;
+use enum_as_inner::EnumAsInner;
 
 pub use embedded_hal::digital::*;
 pub use supply::{GpioErrorType as ErrorType, InputPin, OutputPin, StatefulOutputPin};
@@ -19,7 +19,7 @@ pub mod asynch {
 }
 
 /// Pull setting for an input.
-#[derive(EnumAs, Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(EnumAsInner, Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Pull {
     /// No pull
     None,
@@ -39,7 +39,7 @@ impl From<Option<bool>> for Pull {
 }
 
 /// Digital input or output level.
-#[derive(EnumAs, Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(EnumAsInner, Debug, Eq, PartialEq, Copy, Clone)]
 pub enum Level {
     /// Low
     Low,

@@ -20,10 +20,10 @@ pub mod asynch {
 }
 
 pub mod serial {
-    use enum_as_derive::EnumAs;
+    use enum_as_inner::EnumAsInner;
 
     /// Number of data bits
-    #[derive(EnumAs, PartialEq, Eq, Copy, Clone, Debug)]
+    #[derive(EnumAsInner, PartialEq, Eq, Copy, Clone, Debug)]
     pub enum DataBits {
         DataBits5 = 0,
         DataBits6 = 1,
@@ -33,7 +33,7 @@ pub mod serial {
     }
 
     /// Parity check
-    #[derive(EnumAs, PartialEq, Eq, Copy, Clone, Debug)]
+    #[derive(EnumAsInner, PartialEq, Eq, Copy, Clone, Debug)]
     pub enum Parity {
         None,
         Even,
@@ -41,7 +41,7 @@ pub mod serial {
     }
 
     /// Number of stop bits
-    #[derive(EnumAs, PartialEq, Eq, Copy, Clone, Debug)]
+    #[derive(EnumAsInner, PartialEq, Eq, Copy, Clone, Debug)]
     pub enum StopBits {
         /// 0.5 stop bits
         Stop0P5 = 1,

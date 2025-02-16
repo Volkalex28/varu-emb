@@ -1,4 +1,4 @@
-use enum_as_derive::EnumAs;
+use enum_as_inner::EnumAsInner;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use std::cell::RefCell;
@@ -8,7 +8,7 @@ use syn::spanned::Spanned;
 use syn::{parse, Result, Token};
 use syn_derive::Parse;
 
-#[derive(Parse, Clone, EnumAs)]
+#[derive(Parse, Clone, EnumAsInner)]
 enum GenericParam {
     #[parse(peek = Token![=])]
     Output {
@@ -44,7 +44,7 @@ impl ToTokens for CfgTypeAlias {
         let mut this = self.0.borrow_mut();
 
         let generics = core::mem::take::<Vec<_>>(&mut this.generics).into_iter().flat_map(|generics| generics.into_iter());
-        this.input.generics.params.extend(generics.clone().into_iter().filter_map(GenericParam::into_param));
+        this.input.generics.params.extend(generics.clone().into_iter().filter_map(|v| v.into_param().ok()));
         let syn::Type::Path(type_path) = this.input.ty.as_mut() else { unreachable!() };
         if let Some(segm) = type_path.path.segments.last_mut() {
             let args = generics.map(|g| match g {

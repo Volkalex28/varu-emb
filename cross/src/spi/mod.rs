@@ -1,4 +1,4 @@
-use enum_as_derive::EnumAs;
+use enum_as_inner::EnumAsInner;
 
 pub use embedded_hal::spi::*;
 
@@ -14,7 +14,7 @@ pub mod asynch {
 }
 
 /// SPI modes
-#[derive(EnumAs, Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(EnumAsInner, Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Mode {
     Mode0,
     Mode1,
@@ -23,7 +23,7 @@ pub enum Mode {
 }
 
 /// SPI Bit Order
-#[derive(EnumAs, Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(EnumAsInner, Debug, Clone, Copy, Eq, PartialEq)]
 pub enum BitOrder {
     MSBFirst,
     LSBFirst,
@@ -34,7 +34,7 @@ pub enum BitOrder {
 /// Single = 1 bit, 2 wires
 /// Dual = 2 bit, 2 wires
 /// Quad = 4 bit, 4 wires
-#[derive(EnumAs, Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(EnumAsInner, Debug, Clone, Copy, Eq, PartialEq)]
 pub enum DataMode {
     Single,
     Dual,
